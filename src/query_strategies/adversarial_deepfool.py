@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from .strategy import Strategy
 from tqdm import tqdm
 
+
 class AdversarialDeepFool(Strategy):
     def __init__(self, dataset, net, max_iter=50):
         super(AdversarialDeepFool, self).__init__(dataset, net)
@@ -14,7 +15,7 @@ class AdversarialDeepFool(Strategy):
         nx.requires_grad_()
         eta = torch.zeros(nx.shape)
 
-        out, e1 = self.net.clf(nx+eta)
+        out, e1 = self.net.clf(nx + eta)
         n_class = out.shape[1]
         py = out.max(1)[1].item()
         ny = out.max(1)[1].item()
@@ -40,15 +41,15 @@ class AdversarialDeepFool(Strategy):
                 value_i = np.abs(fi.item()) / np.linalg.norm(wi.numpy().flatten())
 
                 if value_i < value_l:
-                    ri = value_i/np.linalg.norm(wi.numpy().flatten()) * wi
+                    ri = value_i / np.linalg.norm(wi.numpy().flatten()) * wi
 
             eta += ri.clone()
             nx.grad.data.zero_()
-            out, e1 = self.net.clf(nx+eta)
+            out, e1 = self.net.clf(nx + eta)
             py = out.max(1)[1].item()
             i_iter += 1
 
-        return (eta*eta).sum()
+        return (eta * eta).sum()
 
     def query(self, n):
         unlabeled_idxs, unlabeled_data = self.dataset.get_unlabeled_data()
@@ -64,5 +65,4 @@ class AdversarialDeepFool(Strategy):
         self.net.clf.cuda()
 
         return unlabeled_idxs[dis.argsort()[:n]]
-
 

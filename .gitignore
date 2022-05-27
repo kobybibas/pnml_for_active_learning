@@ -1,1 +1,7 @@
 *.pyc
+data
+outputs
+data/*
+outputs/*
+.vscode
+vscode/*

@@ -1,0 +1,50 @@
+# @package _global_
+defaults:
+  - wandb: defaults
+  - _self_
+
+seed: 1234
+data_dir: ../data
+
+n_init_labeled: 10 # Number of init labeled samples. Default 10000
+n_query: 1 # Number of queries per round. Default 1000
+n_round: 500 # Number of rounds. Default 10
+dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+strategy_name: SingleLayerPnml #  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+
+MNIST:
+  n_epoch: 10
+  batch_size: 64
+  batch_size_test: 2048
+  num_workers: 1
+  lr: 0.01
+  momentum: 0.5
+
+FashionMNIST:
+  n_epoch: 10
+  batch_size: 64
+  batch_size_test: 2048
+  num_workers: 1
+  lr: 0.01
+  momentum: 0.5
+
+SVHN:
+  n_epoch: 20
+  batch_size: 64
+  batch_size_test: 2048
+  num_workers: 1
+  lr: 0.01
+  momentum: 0.5
+
+CIFAR10:
+  n_epoch: 20
+  batch_size: 64
+  batch_size_test: 2048
+  num_workers: 1
+  lr: 0.05
+  momentum: 0.3
+
+job_type: ${dataset_name}
+hydra:
+  run:
+    dir: ../outputs/${dataset_name}_${strategy_name}_${now:%Y%m%d_%H%M%S}

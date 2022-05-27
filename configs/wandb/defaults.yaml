@@ -1,0 +1,5 @@
+project: pnml_for_active_learning
+entity: kobybibas
+mode: online
+log: all
+log_freq: 100
