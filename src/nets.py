@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,20 +14,18 @@ class Net:
         self.net = net
         self.params = params
         self.device = device
+        self.net_init = self.net()
 
     def train(self, data):
         n_epoch = self.params["n_epoch"]
-        self.clf = self.net().to(self.device)
+        self.clf = copy.deepcopy(self.net_init).to(self.device).half()
         self.clf.train()
         optimizer = optim.SGD(
             self.clf.parameters(), lr=self.params.lr, momentum=self.params.momentum
         )
 
         loader = DataLoader(
-            data,
-            shuffle=True,
-            batch_size=self.params.batch_size,
-            num_workers=self.params.num_workers,
+            data, shuffle=True, batch_size=self.params.batch_size, num_workers=0,
         )
         for epoch in tqdm(range(1, n_epoch + 1), ncols=100):
             for batch_idx, (x, y, idxs) in enumerate(loader):
@@ -38,46 +38,37 @@ class Net:
 
     def predict(self, data):
         self.clf.eval()
-        preds = torch.zeros(len(data), dtype=data.Y.dtype)
         loader = DataLoader(
-            data,
-            shuffle=False,
-            batch_size=self.params.batch_size_test,
-            num_workers=self.params.num_workers,
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
+        preds = []
         with torch.no_grad():
             for x, y, idxs in loader:
                 x, y = x.to(self.device), y.to(self.device)
                 out, e1 = self.clf(x)
                 pred = out.max(1)[1]
-                preds[idxs] = pred.cpu()
-        return preds
+                preds.append(pred)
+        return torch.hstack(preds).int().cpu()
 
     def predict_prob(self, data):
         self.clf.eval()
-        probs = torch.zeros([len(data), len(np.unique(data.Y))])
         loader = DataLoader(
-            data,
-            shuffle=False,
-            batch_size=self.params.batch_size_test,
-            num_workers=self.params.num_workers,
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0,
         )
         with torch.no_grad():
+            probs = []
             for x, y, idxs in loader:
                 x, y = x.to(self.device), y.to(self.device)
                 out, e1 = self.clf(x)
                 prob = F.softmax(out, dim=1)
-                probs[idxs] = prob.cpu()
-        return probs
+                probs.append(prob)
+        return torch.vstack(probs).float().cpu()
 
     def predict_prob_dropout(self, data, n_drop=10):
         self.clf.train()
         probs = torch.zeros([len(data), len(np.unique(data.Y))])
         loader = DataLoader(
-            data,
-            shuffle=False,
-            batch_size=self.params.batch_size_test,
-            num_workers=self.params.num_workers,
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
         for i in range(n_drop):
             with torch.no_grad():
@@ -93,10 +84,7 @@ class Net:
         self.clf.train()
         probs = torch.zeros([n_drop, len(data), len(np.unique(data.Y))])
         loader = DataLoader(
-            data,
-            shuffle=False,
-            batch_size=self.params.batch_size_test,
-            num_workers=self.params.num_workers,
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
         for i in range(n_drop):
             with torch.no_grad():
@@ -110,10 +98,7 @@ class Net:
     def get_embeddings(self, data) -> torch.Tensor:
         self.clf.eval()
         loader = DataLoader(
-            data,
-            shuffle=False,
-            batch_size=self.params.batch_size_test,
-            num_workers=self.params.num_workers,
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
 
         embeddings = []

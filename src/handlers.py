@@ -2,6 +2,11 @@ import numpy as np
 from torchvision import transforms
 from torch.utils.data import Dataset
 from PIL import Image
+import torch
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class MNIST_Handler(Dataset):
@@ -12,10 +17,23 @@ class MNIST_Handler(Dataset):
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         )
 
+        t0 = time.time()
+        self.x_transformed = torch.vstack(
+            [self.transform(Image.fromarray(x.numpy(), mode="L")) for x in X]
+        ).unsqueeze(1)
+        self.x_transformed = (
+            self.x_transformed.cuda()
+            if torch.cuda.is_available()
+            else self.x_transformed
+        )
+        self.x_transformed = self.x_transformed.half()
+        logger.info(f"Moved dataset to cuda in {time.time()-t0:.2f} sec")
+        logger.info(
+            f"[shape device dtype]=[{self.x_transformed.shape} {self.x_transformed.device} {self.x_transformed.dtype}]"
+        )
+
     def __getitem__(self, index):
-        x, y = self.X[index], self.Y[index]
-        x = Image.fromarray(x.numpy(), mode="L")
-        x = self.transform(x)
+        x, y = self.x_transformed[index], self.Y[index]
         return x, y, index
 
     def __len__(self):

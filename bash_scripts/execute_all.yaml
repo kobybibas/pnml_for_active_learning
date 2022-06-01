@@ -6,9 +6,9 @@ windows:
       - cd ../src # run as a first command in all panes
       - conda activate pnml_for_active_learning
     panes:
-      - python main.py dataset_name=MNIST strategy_name=RandomSampling
-      - python main.py dataset_name=MNIST strategy_name=BALDDropout
-      - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml
-      # - python main.py dataset_name=MNIST strategy_name=RandomSampling
-      # - python main.py dataset_name=MNIST strategy_name=BALDDropout
-      # - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml
+      - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=1234
+      - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=1234
+      - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=1234
+      - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=555
+      - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=555
+      - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=555

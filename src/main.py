@@ -21,7 +21,7 @@ def execute_active_learning(cfg: DictConfig):
     out_dir = os.getcwd()
     os.chdir(hydra.utils.get_original_cwd())
     name = osp.basename(out_dir)
-    pl.seed_everything(123)
+    pl.seed_everything(cfg.seed)
 
     wandb.init(
         project=cfg.wandb.project,

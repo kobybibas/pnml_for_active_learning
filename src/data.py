@@ -18,7 +18,7 @@ class Data:
         self.labeled_idxs = np.zeros(self.n_pool, dtype=bool)
 
     def initialize_labels(self, num: int):
-        # generate initial labeled pool
+        # Generate initial labeled pool
         tmp_idxs = np.arange(self.n_pool)
         np.random.shuffle(tmp_idxs)
         self.labeled_idxs[tmp_idxs[:num]] = True
