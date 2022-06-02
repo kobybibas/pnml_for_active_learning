@@ -7,6 +7,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from typing import Tuple
 
 
 class Net:
@@ -109,6 +110,23 @@ class Net:
                 embeddings.append(e1)
         return torch.vstack(embeddings)
 
+    def get_embddings_and_prob(self, data) -> Tuple[torch.Tensor, torch.Tensor]:
+        self.clf.eval()
+        loader = DataLoader(
+            data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
+        )
+
+        embeddings, probs = [], []
+        with torch.no_grad():
+            for x, _, _ in loader:
+                x = x.to(self.device)
+                out, e1 = self.clf(x)
+                embeddings.append(e1)
+
+                prob = F.softmax(out, dim=1)
+                probs.append(prob)
+        return torch.vstack(embeddings), torch.vstack(probs)
+
 
 class MNIST_Net(nn.Module):
     def __init__(self):
@@ -130,6 +148,9 @@ class MNIST_Net(nn.Module):
 
     def get_embedding_dim(self):
         return 50
+
+    def get_classifer(self):
+        return self.fc2
 
 
 class SVHN_Net(nn.Module):

@@ -8,9 +8,9 @@ data_dir: ../data
 
 n_init_labeled: 50 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
-n_round: 1000 # Number of rounds. Default 10
+n_round: 5000 # Number of rounds. Default 10
 dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
-strategy_name: SingleLayerPnml #  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+strategy_name: RandomSampling #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 
 MNIST:
   n_epoch: 10

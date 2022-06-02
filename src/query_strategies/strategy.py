@@ -1,13 +1,13 @@
-import numpy as np
+from typing import Tuple
+
 import torch
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.utils.data import DataLoader
 from data import Data
+from nets import Net
+from torch.utils.data import DataLoader
 
 
 class Strategy:
-    def __init__(self, dataset: Data, net):
+    def __init__(self, dataset: Data, net: Net):
         self.dataset = dataset
         self.net = net
 
@@ -35,11 +35,11 @@ class Strategy:
         probs = self.net.predict_prob_dropout(data, n_drop=n_drop)
         return probs
 
-    def predict_prob_dropout_split(self, data: Data, n_drop: int = 10):
-        probs = self.net.predict_prob_dropout_split(data, n_drop=n_drop)
-        return probs
+    def predict_prob_dropout_split(self, data: Data, n_drop: int = 10) -> torch.Tensor:
+        return self.net.predict_prob_dropout_split(data, n_drop=n_drop)
 
-    def get_embeddings(self, data: Data):
-        embeddings = self.net.get_embeddings(data)
-        return embeddings
+    def get_embeddings(self, data: Data) -> torch.Tensor:
+        return self.net.get_embeddings(data).float()
 
+    def get_embddings_and_prob(self, data: Data) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.net.get_embddings_and_prob(data)

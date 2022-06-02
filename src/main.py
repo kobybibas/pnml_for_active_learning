@@ -9,7 +9,7 @@ import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import WandbLogger
-
+import numpy as np
 from utils import get_dataset, get_net, get_strategy
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,8 @@ def execute_active_learning(cfg: DictConfig):
         strategy.train()
 
         # Calculate performance
-        training_set_size = len(strategy.dataset.get_labeled_data()[0])
+        data_idx, data_h = strategy.dataset.get_labeled_data()
+        training_set_size = len(data_idx)
         preds = strategy.predict(dataset.get_test_data())
         probs = strategy.predict_prob(dataset.get_test_data())
         test_acc = dataset.cal_test_acc(preds)
@@ -68,14 +69,17 @@ def execute_active_learning(cfg: DictConfig):
             f"Round {rd}. testing accuracy={test_acc:.3f} training_set_size={training_set_size} test_loss={test_loss:.2f}"
         )
 
+        logger.info(f"Training: {torch.bincount(data_h.Y)=}")
         wandb.log(
             {
                 "active_learning_round": rd,
                 "training_set_size": training_set_size,
                 "test_acc": test_acc,
                 "test_loss": test_loss,
+                'training_set_hist':wandb.Histogram(np_histogram= np.histogram(data_h.Y.cpu().numpy(), bins=torch.arange(0, 10, 1)))
             }
         )
+
     logger.info(f"Finish in {time.time()-t0:.2f} sec")
 
 
