@@ -41,5 +41,5 @@ class Strategy:
     def get_embeddings(self, data: Data) -> torch.Tensor:
         return self.net.get_embeddings(data).float()
 
-    def get_embddings_and_prob(self, data: Data) -> Tuple[torch.Tensor, torch.Tensor]:
-        return self.net.get_embddings_and_prob(data)
+    def get_emb_logit_prob(self, data: Data) -> Tuple[torch.Tensor,torch.Tensor, torch.Tensor]:
+        return self.net.get_emb_logit_prob(data)

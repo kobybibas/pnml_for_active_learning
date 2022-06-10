@@ -5,13 +5,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 from typing import Tuple
 
 
 class Net:
-    def __init__(self, net, params, device):
+    def __init__(self, net, params, device: str):
         self.net = net
         self.params = params
         self.device = device
@@ -33,7 +33,7 @@ class Net:
                 x, y = x.to(self.device), y.to(self.device)
                 optimizer.zero_grad()
                 out, e1 = self.clf(x)
-                loss = F.cross_entropy(out, y)
+                loss = F.cross_entropy(out.float(), y)
                 loss.backward()
                 optimizer.step()
 
@@ -81,20 +81,25 @@ class Net:
         probs /= n_drop
         return probs
 
-    def predict_prob_dropout_split(self, data, n_drop=10):
+    def predict_prob_dropout_split(self, data: Dataset, n_drop: int = 10):
         self.clf.train()
-        probs = torch.zeros([n_drop, len(data), len(np.unique(data.Y))])
         loader = DataLoader(
             data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
+
+        probs_drop = []
         for i in range(n_drop):
+            probs = []
             with torch.no_grad():
                 for x, y, idxs in loader:
                     x, y = x.to(self.device), y.to(self.device)
                     out, e1 = self.clf(x)
                     prob = F.softmax(out, dim=1)
-                    probs[i][idxs] += F.softmax(out, dim=1).cpu()
-        return probs
+                    probs.append(prob.cpu())
+                    # probs[i][idxs] += F.softmax(out, dim=1).cpu()
+            probs_drop.append(torch.vstack(probs).unsqueeze(0))
+        probs_drop = torch.vstack(probs_drop).float()
+        return probs_drop
 
     def get_embeddings(self, data) -> torch.Tensor:
         self.clf.eval()
@@ -110,22 +115,25 @@ class Net:
                 embeddings.append(e1)
         return torch.vstack(embeddings)
 
-    def get_embddings_and_prob(self, data) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_emb_logit_prob(
+        self, data
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         self.clf.eval()
         loader = DataLoader(
             data, shuffle=False, batch_size=self.params.batch_size_test, num_workers=0
         )
 
-        embeddings, probs = [], []
+        embeddings, logits, probs = [], [], []
         with torch.no_grad():
             for x, _, _ in loader:
                 x = x.to(self.device)
                 out, e1 = self.clf(x)
                 embeddings.append(e1)
+                logits.append(out)
 
                 prob = F.softmax(out, dim=1)
                 probs.append(prob)
-        return torch.vstack(embeddings), torch.vstack(probs)
+        return torch.vstack(embeddings), torch.vstack(logits), torch.vstack(probs)
 
 
 class MNIST_Net(nn.Module):
