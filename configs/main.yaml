@@ -45,6 +45,9 @@ CIFAR10:
   momentum: 0.3
 
 job_type: ${dataset_name}
+date: ${now:%Y%m%d_%H}
 hydra:
+  job:
+    chdir: True
   run:
     dir: ../outputs/${dataset_name}_${strategy_name}_${now:%Y%m%d_%H%M%S}

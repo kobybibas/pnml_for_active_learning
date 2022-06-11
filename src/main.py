@@ -16,7 +16,7 @@ from utils import get_dataset, get_net, get_strategy
 logger = logging.getLogger(__name__)
 
 
-@hydra.main(config_path="../configs/", config_name="main")
+@hydra.main(version_base="1.2",config_path="../configs/", config_name="main")
 def execute_active_learning(cfg: DictConfig):
     t0 = time.time()
     out_dir = os.getcwd()
@@ -64,18 +64,15 @@ def execute_active_learning(cfg: DictConfig):
         strategy.train()
 
         # Calculate performance
-        training_labels = strategy.dataset.get_labeled_labels()
+        training_labels = strategy.dataset.get_labeled_labels().cpu().numpy()
         preds = strategy.predict(dataset.get_test_data())
         probs = strategy.predict_prob(dataset.get_test_data())
         test_acc = dataset.cal_test_acc(preds)
         test_loss = dataset.cal_test_loss(probs)
-        training_labels_hist = np.histogram(
-            training_labels.cpu().numpy(), bins=torch.arange(0, 10, 1), density=True,
-        )
-        round_time = t1 = time.time()
-        logger.info(f"\ttraining_labels_hist: {training_labels_hist[0]}")
+
+        round_time = time.time() - t1
         logger.info(
-            f"[{rd}/{cfg.n_round-1}] Testing [acc loss]=[{test_acc:.3f} {test_loss:.2f}]. training_set_size={len(training_labels)}"
+            f"[{rd}/{cfg.n_round-1}] Testing [acc loss]=[{test_acc:.3f} {test_loss:.2f}]. Training size={len(training_labels)}"
         )
 
         wandb.log(
@@ -84,8 +81,13 @@ def execute_active_learning(cfg: DictConfig):
                 "training_set_size": len(training_labels),
                 "test_acc": test_acc,
                 "test_loss": test_loss,
-                "training_set_hist": wandb.Histogram(np_histogram=training_labels_hist),
-                "round_time": round_time,
+                "round_time_sec": round_time,
+            }
+        )
+        wandb.log(
+            {
+                f"label_{label}_count": (training_labels == label).sum()
+                for label in np.arange(0, 10, 1)
             }
         )
 

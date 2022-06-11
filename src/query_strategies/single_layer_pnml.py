@@ -4,6 +4,7 @@ from typing import Tuple
 
 import torch
 import torch.linalg as tl
+import wandb
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
@@ -297,7 +298,7 @@ class SingleLayerPnml(Strategy):
                 test_embs, xn, P_N_minus_1, xn_P_N_minus_1_xnt, x_P_N_minus_1_xt
             )
 
-            # Normalization factor
+            # Normalization factor. [nulabeled_size x test_size x num_labels]
             nf = self.calc_normalization_factor(test_probs_n_plus_1, x_proj)
 
             # Worst y_n: Average y_n the test set, then take the worst y_n
@@ -313,4 +314,12 @@ class SingleLayerPnml(Strategy):
         )
 
         torch.set_grad_enabled(True)
+
+        wandb.log(
+            {
+                "min_regret": min_xn_values[0].item(),
+                "avg_regret": min_xn_values.mean().item(),
+                "max_regret": min_xn_values[-1].item(),
+            }
+        )
         return unlabeled_idxs[min_xn_idx[:n]]
