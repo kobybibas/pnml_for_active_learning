@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class SingleLayerPnml(Strategy):
     def __init__(self, dataset, net):
         super(SingleLayerPnml, self).__init__(dataset, net)
-        self.eps = 1e-3
+        self.eps = 1e-6
         self.unlabeled_batch_size = 128
         self.unlabeled_pool_size = 4096
 
@@ -56,10 +56,10 @@ class SingleLayerPnml(Strategy):
     def calc_mul_vec_matrix_vec(
         self, vecs: torch.Tensor, mat: torch.Tensor
     ) -> torch.Tensor:
-        # TODO: torch.einsum?
-        return torch.hstack(
-            [vec_i.unsqueeze(0) @ mat @ vec_i.unsqueeze(1) for vec_i in vecs]
-        ).squeeze()
+        return torch.diag(vecs @ mat @ vecs.transpose(1,0))
+        # return torch.hstack(
+        #     [vec_i.unsqueeze(0) @ mat @ vec_i.unsqueeze(1) for vec_i in vecs]
+        # ).squeeze()  # TODO: torch.einsum?
 
     def calc_x_P_N_minus_1_xt(
         self, test_embs: torch.Tensor, P_N_minus_1: torch.Tensor
@@ -180,7 +180,7 @@ class SingleLayerPnml(Strategy):
         assert x_proj.size(1) == test_size
         assert not torch.isnan(x_proj).any().item()
         assert not torch.isinf(x_proj).any().item()
-        assert torch.all(x_proj >= 0)
+        assert torch.all(x_proj >= 0), print(x_proj[x_proj < 0])
         return x_proj
 
     def calc_normalization_factor(
@@ -198,7 +198,7 @@ class SingleLayerPnml(Strategy):
         assert nf.size(0) == unlabeled_size
         assert nf.size(1) == test_size
         assert nf.size(2) == num_labeles
-        assert torch.all(nf > 1)
+        assert torch.all(nf >= (1 - 1e-3)), print(nf[nf < 1])
         assert not torch.isnan(nf).any().item()
         assert not torch.isinf(nf).any().item()
         return nf
@@ -209,9 +209,8 @@ class SingleLayerPnml(Strategy):
 
         # Training set
         t1 = time.time()
-        _, train_data = self.dataset.get_labeled_data()
-        train_embs = self.get_embeddings(train_data)
-        train_embs = self.add_ones(train_embs) # .float()
+        train_embs, _, _ = self.get_emb_logit_prob(self.dataset.get_labeled_data()[1])
+        train_embs = self.add_ones(train_embs)  # .float()
         training_size, num_features = train_embs.shape
         logger.info(
             f"Training: get_embeddings in {time.time()-t1:.1f}. {[training_size, num_features]=}"
@@ -226,7 +225,7 @@ class SingleLayerPnml(Strategy):
         #     unlabeled_logits.float(),
         # )
         # -- Reduce number of unlabeled to evaluate:
-        idxs =  torch.randperm(len(unlabeled_embs))[:self.unlabeled_pool_size]
+        idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
         unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
             unlabeled_embs[idxs],
             unlabeled_logits[idxs],
@@ -255,9 +254,9 @@ class SingleLayerPnml(Strategy):
 
         # ERM classifier: num_features x num_labels
         clf = self.net.clf.get_classifer()
-        theta_n_minus_1 = (
-            torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone() # .float()
-        )
+        theta_n_minus_1 = torch.hstack(
+            [clf.weight, clf.bias.unsqueeze(-1)]
+        ).clone()  # .float()
 
         # Dataloder
         unlabeled_dataloader = DataLoader(
@@ -301,7 +300,7 @@ class SingleLayerPnml(Strategy):
             # Normalization factor
             nf = self.calc_normalization_factor(test_probs_n_plus_1, x_proj)
 
-            # worst y_n: Average y_n of xn over al the training set, then take the worst
+            # Worst y_n: Average y_n the test set, then take the worst y_n
             max_yn_for_nf = nf.mean(axis=1).max(dim=-1)[0]
 
             max_yn_for_nf_list.append(max_yn_for_nf)
