@@ -14,11 +14,21 @@ logger = logging.getLogger(__name__)
 
 class Data:
     def __init__(
-        self, X_train, Y_train, X_test, Y_test, handler: Dataset, device: str = None,
+        self,
+        X_train,
+        Y_train,
+        X_val,
+        Y_val,
+        X_test,
+        Y_test,
+        handler: Dataset,
+        device: str = None,
     ):
         t0 = time.time()
         self.X_train = X_train
         self.Y_train = Y_train
+        self.X_val = X_val
+        self.Y_val = Y_val
         self.X_test = X_test
         self.Y_test = Y_test
         self.handler = handler
@@ -36,16 +46,23 @@ class Data:
         (self.X_train_trans, self.Y_train_trans,) = self.get_transformed_set(
             self.X_train, self.Y_train, self.device
         )
+        self.X_val_trans, self.Y_val_trans = self.get_transformed_set(
+            self.X_val, self.Y_val, self.device
+        )
         self.X_test_trans, self.Y_test_trans = self.get_transformed_set(
             self.X_test, self.Y_test, self.device
         )
-        trainset_size, testset_size = (
+        trainset_size, valset_size, testset_size = (
             len(self.X_train_trans),
+            len(self.X_val_trans),
             len(self.X_test_trans),
         )
 
         self.train_dataset = TensorDataset(
             self.X_train_trans, self.Y_train_trans, torch.arange(trainset_size),
+        )
+        self.val_dataset = TensorDataset(
+            self.X_val_trans, self.Y_val_trans, torch.arange(valset_size),
         )
         self.test_dataset = TensorDataset(
             self.X_test_trans, self.Y_test_trans, torch.arange(testset_size),
@@ -53,6 +70,9 @@ class Data:
 
         logger.info(
             f"Train. [Data Labels]=[{self.X_train_trans.shape} {self.Y_train_trans.shape}]"
+        )
+        logger.info(
+            f"Validation. [Data Labels]=[{self.X_val_trans.shape} {self.Y_val_trans.shape}]"
         )
         logger.info(
             f"Test. [Data Labels]=[{self.X_test_trans.shape} {self.Y_test_trans.shape}]"
@@ -81,7 +101,7 @@ class Data:
         np.random.shuffle(tmp_idxs)
         self.labeled_idxs[tmp_idxs[:num]] = True
 
-    def get_labeled_labels(self) ->torch.Tensor:
+    def get_labeled_labels(self) -> torch.Tensor:
         return self.Y_train_trans[self.labeled_idxs]
 
     def get_labeled_data(self) -> Tuple[np.array, Subset]:
@@ -95,6 +115,9 @@ class Data:
     def get_train_data(self) -> Tuple[np.array, TensorDataset]:
         return self.labeled_idxs.copy(), self.train_dataset
 
+    def get_val_data(self) -> TensorDataset:
+        return self.val_dataset
+
     def get_test_data(self) -> TensorDataset:
         return self.test_dataset
 
@@ -105,14 +128,18 @@ class Data:
         return cross_entropy(probs, self.Y_test).item()
 
 
-def get_MNIST(handler, data_dir: str = "../data") -> Data:
+def get_MNIST(
+    handler, training_set_size: int = 40000, data_dir: str = "../data"
+) -> Data:
     raw_train = datasets.MNIST(data_dir, train=True, download=True)
     raw_test = datasets.MNIST(data_dir, train=False, download=True)
     return Data(
-        raw_train.data[:40000],
-        raw_train.targets[:40000],
-        raw_test.data[:40000],
-        raw_test.targets[:40000],
+        raw_train.data[:training_set_size],
+        raw_train.targets[:training_set_size],
+        raw_train.data[training_set_size:],
+        raw_train.targets[training_set_size:],
+        raw_test.data,
+        raw_test.targets,
         handler,
     )
 
@@ -151,3 +178,19 @@ def get_CIFAR10(handler, data_dir: str = "../data") -> Data:
         torch.LongTensor(data_test.targets)[:40000],
         handler,
     )
+
+
+def get_dataloaders(dataset, batch_size:int, batch_size_test:int) -> Tuple[DataLoader,DataLoader]:
+    train_loader = DataLoader(
+            dataset.get_labeled_data()[-1],
+            shuffle=True,
+            batch_size=batch_size,
+            num_workers=0,
+        )
+    val_loader = DataLoader(
+            dataset.get_val_data(),
+            shuffle=False,
+            batch_size=batch_size_test,
+            num_workers=0,
+        )
+    return train_loader, val_loader

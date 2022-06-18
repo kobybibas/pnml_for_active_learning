@@ -8,16 +8,16 @@ windows:
     panes:
       - shell_command:
         - sleep 0
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=1 n_init_labeled=500 n_round=5000
+        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=1 n_init_labeled=100 n_round=900
       - shell_command:
         - sleep 2
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=2 n_init_labeled=500 n_round=5000
+        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=2 n_init_labeled=100 n_round=900
       - shell_command:
         - sleep 4
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=3 n_init_labeled=500 n_round=5000
+        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=3 n_init_labeled=100 n_round=900
       - shell_command:
         - sleep 6
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=4 n_init_labeled=500 n_round=5000
+        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=4 n_init_labeled=100 n_round=900
       - shell_command:
         - sleep 8
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=5 n_init_labeled=500 n_round=5000
+        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=5 n_init_labeled=100 n_round=900

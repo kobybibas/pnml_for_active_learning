@@ -6,43 +6,26 @@ defaults:
 seed: 1234
 data_dir: ../data
 
-n_init_labeled: 500 # Number of init labeled samples. Default 10000
+n_init_labeled: 100 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 3000 # Number of rounds. Default 10
 dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
 strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 
-MNIST:
-  n_epoch: 10
-  batch_size: 64
-  batch_size_test: 2048
-  num_workers: 1
-  lr: 0.01
-  momentum: 0.5
+SingleLayerPnml:
+  unlabeled_batch_size: 128
+  unlabeled_pool_size: 4096
 
-FashionMNIST:
-  n_epoch: 10
-  batch_size: 64
-  batch_size_test: 2048
-  num_workers: 1
-  lr: 0.01
-  momentum: 0.5
+epochs_max: 100
+epochs_min: 30
+batch_size: 64
+batch_size_test: 2048
+num_workers: 0
+lr: 0.1
+milestones: [20, 80]
+momentum: 0.9
+weight_decay: 1e-4
 
-SVHN:
-  n_epoch: 20
-  batch_size: 64
-  batch_size_test: 2048
-  num_workers: 1
-  lr: 0.01
-  momentum: 0.5
-
-CIFAR10:
-  n_epoch: 20
-  batch_size: 64
-  batch_size_test: 2048
-  num_workers: 1
-  lr: 0.05
-  momentum: 0.3
 
 job_type: ${dataset_name}
 date: ${now:%Y%m%d_%H}

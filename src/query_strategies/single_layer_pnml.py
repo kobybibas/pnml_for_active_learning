@@ -14,9 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class SingleLayerPnml(Strategy):
-    def __init__(self, dataset, net):
-        super(SingleLayerPnml, self).__init__(dataset, net)
-        self.eps = 1e-6
+    def __init__(self):
+        self.eps = 1e-3
         self.unlabeled_batch_size = 128
         self.unlabeled_pool_size = 4096
 
@@ -46,21 +45,18 @@ class SingleLayerPnml(Strategy):
                     raise Exception("isinf(P_N_minus_1)")
                 failed = False
             except:
+                logger.info(f"P_N_minus_1 {num_iter} {eps=}. Failed")
                 num_iter += 1
                 eps = min(eps * 10, 1)
-                logger.info(f"P_N_minus_1 {num_iter} {eps=}. Failed")
         logger.info(
-            f"Finished P_N_minus_1 {num_iter=} {eps=}. {[num_samples, num_features]=}"
+            f"Finished P_N_minus_1 {num_iter=} {eps=}. {[num_samples, num_features]=}. s={tl.svd(train_embs.T.float() @ train_embs.float())[1][[0,-1]]}"
         )
         return P_N_minus_1
 
     def calc_mul_vec_matrix_vec(
         self, vecs: torch.Tensor, mat: torch.Tensor
     ) -> torch.Tensor:
-        return torch.diag(vecs @ mat @ vecs.transpose(1,0))
-        # return torch.hstack(
-        #     [vec_i.unsqueeze(0) @ mat @ vec_i.unsqueeze(1) for vec_i in vecs]
-        # ).squeeze()  # TODO: torch.einsum?
+        return torch.diag(vecs @ mat @ vecs.transpose(1, 0))
 
     def calc_x_P_N_minus_1_xt(
         self, test_embs: torch.Tensor, P_N_minus_1: torch.Tensor
@@ -92,9 +88,7 @@ class SingleLayerPnml(Strategy):
         g = xn @ P_N_minus_1 / (1 + xn_P_N_minus_1_xnt)
 
         # Eq 16 z=f^{-1}(yn)=ln(S). [num_unlabeled x num_labels]
-        z = torch.log(torch.sum(torch.exp(logit_n), axis=1, keepdims=True)).repeat(
-            [1, num_labels]
-        )
+        z = torch.logsumexp(logit_n, axis=1, keepdims=True).repeat([1, num_labels])
 
         # Eq. 12. [num_unlabeled x num_labels x num_features]:
         #     theta_c_n[n,m,l]: for unlabeled sample n added to the training set with the label m,
@@ -173,9 +167,9 @@ class SingleLayerPnml(Strategy):
             [test_embs @ P_N_minus_1 @ xn_i.unsqueeze(1) for xn_i in xn]
         ).transpose(1, 0)
         x_proj = torch.add(
-            ((1 + a) / (1 + 2 * a)) @ x_P_N_minus_1_xt.unsqueeze(0),
-            (-1 / (1 + 2 * a)) * (xn_P_N_minus_1_xt ** 2),
-        )
+            (((1 + a) / (1 + 2 * a)) @ x_P_N_minus_1_xt.unsqueeze(0)).float(),
+            ((-1 / (1 + 2 * a)) * (xn_P_N_minus_1_xt ** 2)).float(),
+        ).half()
 
         assert x_proj.size(0) == unlabeled_size
         assert x_proj.size(1) == test_size
@@ -195,7 +189,9 @@ class SingleLayerPnml(Strategy):
         x_proj = x_proj.unsqueeze(-1).unsqueeze(-1)
 
         # Eq. 20
-        nf = torch.sum(probs / (probs + (1 - probs) * (probs ** x_proj)), dim=-1)
+        nf = torch.sum(
+            probs / (probs + (1 - probs) * (probs ** x_proj) + self.eps), dim=-1
+        )
         assert nf.size(0) == unlabeled_size
         assert nf.size(1) == test_size
         assert nf.size(2) == num_labeles
@@ -204,13 +200,13 @@ class SingleLayerPnml(Strategy):
         assert not torch.isinf(nf).any().item()
         return nf
 
-    def query(self, n):
+    def query(self, n, net, dataset):
         logger.info("SingleLayerPnml: query")
         torch.set_grad_enabled(False)
 
         # Training set
         t1 = time.time()
-        train_embs, _, _ = self.get_emb_logit_prob(self.dataset.get_labeled_data()[1])
+        train_embs, _, _ = net.get_emb_logit_prob(dataset.get_labeled_data()[1])
         train_embs = self.add_ones(train_embs)  # .float()
         training_size, num_features = train_embs.shape
         logger.info(
@@ -219,12 +215,8 @@ class SingleLayerPnml(Strategy):
 
         # Unlabeled set
         t1 = time.time()
-        unlabeled_idxs, unlabeled_data = self.dataset.get_unlabeled_data()
-        unlabeled_embs, unlabeled_logits, _ = self.get_emb_logit_prob(unlabeled_data)
-        # unlabeled_embs, unlabeled_logits = (
-        #     unlabeled_embs.float(),
-        #     unlabeled_logits.float(),
-        # )
+        unlabeled_idxs, unlabeled_data = dataset.get_unlabeled_data()
+        unlabeled_embs, unlabeled_logits, _ = net.get_emb_logit_prob(unlabeled_data)
         # -- Reduce number of unlabeled to evaluate:
         idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
         unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
@@ -240,10 +232,7 @@ class SingleLayerPnml(Strategy):
 
         # Test set
         t1 = time.time()
-        test_embs, test_logits, _ = self.get_emb_logit_prob(
-            self.dataset.get_test_data()
-        )
-        # test_embs, test_logits = test_embs.float(), test_logits.float()
+        test_embs, test_logits, _ = net.get_emb_logit_prob(dataset.get_test_data())
         test_embs = self.add_ones(test_embs)
         test_size, num_features = test_embs.shape
         logger.info(
@@ -254,10 +243,8 @@ class SingleLayerPnml(Strategy):
         P_N_minus_1 = self.calc_P_N_minus_1(train_embs)
 
         # ERM classifier: num_features x num_labels
-        clf = self.net.clf.get_classifer()
-        theta_n_minus_1 = torch.hstack(
-            [clf.weight, clf.bias.unsqueeze(-1)]
-        ).clone()  # .float()
+        clf = net.clf.get_classifer()
+        theta_n_minus_1 = torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone()
 
         # Dataloder
         unlabeled_dataloader = DataLoader(
@@ -273,7 +260,7 @@ class SingleLayerPnml(Strategy):
             f"calc_x_P_N_minus_1_xt in {time.time()-t1:.1f} sec. {x_P_N_minus_1_xt.shape=}"
         )
 
-        max_yn_for_nf_list = []
+        nfs_with_unlabeled = []
         for xn, logit_n in tqdm(unlabeled_dataloader):
             # xn: num_unlabeled_batch x num_features
             # logit_n: num_unlabeled_batch x num_labels. xn_t @ theta_n_minus_1
@@ -301,25 +288,37 @@ class SingleLayerPnml(Strategy):
             # Normalization factor. [nulabeled_size x test_size x num_labels]
             nf = self.calc_normalization_factor(test_probs_n_plus_1, x_proj)
 
-            # Worst y_n: Average y_n the test set, then take the worst y_n
-            max_yn_for_nf = nf.mean(axis=1).max(dim=-1)[0]
+            # Save: Average y_n over the test set,
+            nfs_with_unlabeled.append(nf.mean(axis=1))
 
-            max_yn_for_nf_list.append(max_yn_for_nf)
-        max_yn_for_nf = torch.hstack(max_yn_for_nf_list)
+        nfs_with_unlabeled = torch.vstack(nfs_with_unlabeled)
+
+        # Worst y_n: Average y_n the test set, then take the worst y_n
+        nf_of_max_yn, max_yn_values = nfs_with_unlabeled.max(dim=-1)
 
         # Sort from min to max
-        min_xn_values, min_xn_idx = max_yn_for_nf.sort(descending=False)
+        min_xn_values, min_xn_idx = nf_of_max_yn.sort(descending=False)
+        max_yn_value = max_yn_values[min_xn_idx][:n].item()
+
         logger.info(
             f"{min_xn_values[:2]=}, {min_xn_values[-2:]=}, {min_xn_values.mean().item()=}"
         )
+        logger.info(f"{torch.bincount(max_yn_values)=}")
 
+        chosen_idxs = unlabeled_idxs[min_xn_idx[:n]]
+        actual_yn_value = dataset.Y_train[chosen_idxs]
+        logger.info(f"yn_value: [max actual]=[{max_yn_value} {actual_yn_value}]")
+
+        # Finalize
         torch.set_grad_enabled(True)
-
         wandb.log(
             {
                 "min_regret": min_xn_values[0].item(),
                 "avg_regret": min_xn_values.mean().item(),
                 "max_regret": min_xn_values[-1].item(),
+                "max_equal_true": torch.mean(
+                    torch.tensor(max_yn_value == actual_yn_value).float()
+                ).item(),
             }
         )
-        return unlabeled_idxs[min_xn_idx[:n]]
+        return chosen_idxs

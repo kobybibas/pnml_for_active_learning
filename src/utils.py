@@ -1,6 +1,6 @@
 from handlers import MNIST_Handler, SVHN_Handler, CIFAR10_Handler
 from data import get_MNIST, get_FashionMNIST, get_SVHN, get_CIFAR10
-from nets import Net, MNIST_Net, SVHN_Net, CIFAR10_Net
+from nets import MNIST_Net, SVHN_Net, CIFAR10_Net
 from query_strategies import (
     RandomSampling,
     LeastConfidence,
@@ -16,6 +16,7 @@ from query_strategies import (
     AdversarialDeepFool,
     SingleLayerPnml,
 )
+from query_strategies.strategy import Strategy
 
 
 def get_handler(name):
@@ -42,46 +43,46 @@ def get_dataset(name: str, data_dir: str = "../data"):
         raise NotImplementedError
 
 
-def get_net(name, params, device):
+def get_net(name):
     if name == "MNIST":
-        return Net(MNIST_Net, params, device)
+        return MNIST_Net
     elif name == "FashionMNIST":
-        return Net(MNIST_Net, params, device)
+        return MNIST_Net
     elif name == "SVHN":
-        return Net(SVHN_Net, params, device)
+        return SVHN_Net
     elif name == "CIFAR10":
-        return Net(CIFAR10_Net, params, device)
+        return CIFAR10_Net
     else:
         raise NotImplementedError
 
 
-def get_strategy(name):
+def get_strategy(name:str)->Strategy:
     if name == "RandomSampling":
-        return RandomSampling
+        return RandomSampling()
     elif name == "LeastConfidence":
-        return LeastConfidence
+        return LeastConfidence()
     elif name == "MarginSampling":
-        return MarginSampling
+        return MarginSampling()
     elif name == "EntropySampling":
-        return EntropySampling
+        return EntropySampling()
     elif name == "LeastConfidenceDropout":
-        return LeastConfidenceDropout
+        return LeastConfidenceDropout()
     elif name == "MarginSamplingDropout":
-        return MarginSamplingDropout
+        return MarginSamplingDropout()
     elif name == "EntropySamplingDropout":
-        return EntropySamplingDropout
+        return EntropySamplingDropout()
     elif name == "KMeansSampling":
-        return KMeansSampling
+        return KMeansSampling()
     elif name == "KCenterGreedy":
-        return KCenterGreedy
+        return KCenterGreedy()
     elif name == "BALDDropout":
-        return BALDDropout
+        return BALDDropout()
     elif name == "AdversarialBIM":
-        return AdversarialBIM
+        return AdversarialBIM()
     elif name == "AdversarialDeepFool":
-        return AdversarialDeepFool
+        return AdversarialDeepFool()
     elif name == "SingleLayerPnml":
-        return SingleLayerPnml
+        return SingleLayerPnml()
     else:
         raise NotImplementedError
 
