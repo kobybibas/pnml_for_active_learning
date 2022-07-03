@@ -7,7 +7,7 @@ import torch.linalg as tl
 import wandb
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
-
+import numpy.linalg as npl
 from .strategy import Strategy
 
 logger = logging.getLogger(__name__)
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class SingleLayerPnml(Strategy):
     def __init__(self):
-        self.eps = 1e-3
-        self.unlabeled_batch_size = 128
+        self.eps = 1e-6
+        self.unlabeled_batch_size = 64
         self.unlabeled_pool_size = 4096
 
     def add_ones(self, embs: torch.Tensor) -> torch.Tensor:
@@ -31,26 +31,12 @@ class SingleLayerPnml(Strategy):
         """
         # Training set inverse:  num_features x num_features
         num_samples, num_features = train_embs.shape
-        failed, num_iter, eps = True, 0, self.eps
-        while failed:
-            try:
-                P_N_minus_1 = tl.inv(
-                    train_embs.T.float() @ train_embs.float()
-                    + eps * torch.eye(num_features).to(train_embs.device)
-                ).half()
-                if (
-                    torch.isinf(P_N_minus_1).any().item()
-                    or torch.isnan(P_N_minus_1).any().item()
-                ):
-                    raise Exception("isinf(P_N_minus_1)")
-                failed = False
-            except:
-                logger.info(f"P_N_minus_1 {num_iter} {eps=}. Failed")
-                num_iter += 1
-                eps = min(eps * 10, 1)
-        logger.info(
-            f"Finished P_N_minus_1 {num_iter=} {eps=}. {[num_samples, num_features]=}. s={tl.svd(train_embs.T.float() @ train_embs.float())[1][[0,-1]]}"
-        )
+        cov = train_embs.T @ train_embs
+        s = tl.svdvals(cov)
+        P_N_minus_1 = tl.inv(cov)
+        logger.info(f"P_N_minus_1 {[num_samples, num_features]=}] {s[-1]=}")
+        assert not torch.isinf(P_N_minus_1).any().item()
+        assert not torch.isnan(P_N_minus_1).any().item()
         return P_N_minus_1
 
     def calc_mul_vec_matrix_vec(
@@ -169,7 +155,7 @@ class SingleLayerPnml(Strategy):
         x_proj = torch.add(
             (((1 + a) / (1 + 2 * a)) @ x_P_N_minus_1_xt.unsqueeze(0)).float(),
             ((-1 / (1 + 2 * a)) * (xn_P_N_minus_1_xt ** 2)).float(),
-        ).half()
+        )  # .half()
 
         assert x_proj.size(0) == unlabeled_size
         assert x_proj.size(1) == test_size
@@ -218,12 +204,12 @@ class SingleLayerPnml(Strategy):
         unlabeled_idxs, unlabeled_data = dataset.get_unlabeled_data()
         unlabeled_embs, unlabeled_logits, _ = net.get_emb_logit_prob(unlabeled_data)
         # -- Reduce number of unlabeled to evaluate:
-        idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
-        unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
-            unlabeled_embs[idxs],
-            unlabeled_logits[idxs],
-            unlabeled_idxs[idxs],
-        )
+        # idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
+        # unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
+        #     unlabeled_embs[idxs],
+        #     unlabeled_logits[idxs],
+        #     unlabeled_idxs[idxs],
+        # )
         unlabeled_embs = self.add_ones(unlabeled_embs)
         unlabeled_size, num_features = unlabeled_embs.shape
         logger.info(
@@ -239,12 +225,12 @@ class SingleLayerPnml(Strategy):
             f"Test: get_embeddings in {time.time()-t1:.1f}. {[test_size, num_features]=}"
         )
 
-        # Inverse of training set
-        P_N_minus_1 = self.calc_P_N_minus_1(train_embs)
-
-        # ERM classifier: num_features x num_labels
-        clf = net.clf.get_classifer()
-        theta_n_minus_1 = torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone()
+        # Float for stable calculations
+        train_embs = train_embs.float()
+        unlabeled_embs = unlabeled_embs.float()
+        unlabeled_logits = unlabeled_logits.float()
+        test_embs = test_embs.float()
+        test_logits = test_logits.float()
 
         # Dataloder
         unlabeled_dataloader = DataLoader(
@@ -252,6 +238,13 @@ class SingleLayerPnml(Strategy):
             num_workers=0,
             batch_size=self.unlabeled_batch_size,
         )
+
+        # Inverse of training set
+        P_N_minus_1 = self.calc_P_N_minus_1(train_embs)
+
+        # ERM classifier: num_features x num_labels
+        clf = net.clf.get_classifer().float()
+        theta_n_minus_1 = torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone()
 
         # Test projection on training design matrix
         t1 = time.time()

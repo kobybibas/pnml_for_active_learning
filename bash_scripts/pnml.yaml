@@ -1,23 +1,38 @@
-session_name: al_random
+session_name: al_pnml
 windows:
-  - window_name: random
-    # layout: tiled
+  - window_name: pnml
     shell_command_before:
-      - cd ../src # run as a first command in all panes
+      - cd ../src
       - conda activate pnml_for_active_learning
     panes:
-      - shell_command:
-        - sleep 0
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=1 n_init_labeled=100 n_round=900
-      - shell_command:
-        - sleep 2
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=2 n_init_labeled=100 n_round=900
-      - shell_command:
-        - sleep 4
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=3 n_init_labeled=100 n_round=900
-      - shell_command:
-        - sleep 6
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=4 n_init_labeled=100 n_round=900
-      - shell_command:
-        - sleep 8
-        - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=5 n_init_labeled=100 n_round=900
+      panes:
+        - shell_command:
+            - sleep 0
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=1 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 2
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=2 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 4
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=3 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 6
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=4 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 8
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=5 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 10
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=6 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 12
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=7 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 14
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=8 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 16
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=9 n_init_labeled=100 n_round=400
+        - shell_command:
+            - sleep 18
+            - python main.py dataset_name=MNIST strategy_name=SingleLayerPnml seed=10 n_init_labeled=100 n_round=400

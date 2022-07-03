@@ -129,15 +129,20 @@ class Data:
 
 
 def get_MNIST(
-    handler, training_set_size: int = 40000, data_dir: str = "../data"
+    handler,
+    training_set_size: int = 40000,
+    validation_set_size: int = 1024,
+    data_dir: str = "../data",
 ) -> Data:
+
     raw_train = datasets.MNIST(data_dir, train=True, download=True)
     raw_test = datasets.MNIST(data_dir, train=False, download=True)
+
     return Data(
         raw_train.data[:training_set_size],
         raw_train.targets[:training_set_size],
-        raw_train.data[training_set_size:],
-        raw_train.targets[training_set_size:],
+        raw_train.data[training_set_size : training_set_size + validation_set_size],
+        raw_train.targets[training_set_size : training_set_size + validation_set_size],
         raw_test.data,
         raw_test.targets,
         handler,
@@ -180,17 +185,19 @@ def get_CIFAR10(handler, data_dir: str = "../data") -> Data:
     )
 
 
-def get_dataloaders(dataset, batch_size:int, batch_size_test:int) -> Tuple[DataLoader,DataLoader]:
+def get_dataloaders(
+    dataset, batch_size: int, batch_size_test: int
+) -> Tuple[DataLoader, DataLoader]:
     train_loader = DataLoader(
-            dataset.get_labeled_data()[-1],
-            shuffle=True,
-            batch_size=batch_size,
-            num_workers=0,
-        )
+        dataset.get_labeled_data()[-1],
+        shuffle=True,
+        batch_size=batch_size,
+        num_workers=0,
+    )
     val_loader = DataLoader(
-            dataset.get_val_data(),
-            shuffle=False,
-            batch_size=batch_size_test,
-            num_workers=0,
-        )
+        dataset.get_val_data(),
+        shuffle=False,
+        batch_size=batch_size_test,
+        num_workers=0,
+    )
     return train_loader, val_loader

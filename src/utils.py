@@ -30,15 +30,28 @@ def get_handler(name):
         return CIFAR10_Handler
 
 
-def get_dataset(name: str, data_dir: str = "../data"):
+def get_dataset(
+    name: str,
+    training_set_size: int = 40000,
+    validation_set_size: int = -1,
+    data_dir: str = "../data",
+):
     if name == "MNIST":
-        return get_MNIST(get_handler(name), data_dir)
+        return get_MNIST(
+            get_handler(name), training_set_size, validation_set_size, data_dir
+        )
     elif name == "FashionMNIST":
-        return get_FashionMNIST(get_handler(name), data_dir)
+        return get_FashionMNIST(
+            get_handler(name), training_set_size, validation_set_size, data_dir
+        )
     elif name == "SVHN":
-        return get_SVHN(get_handler(name), data_dir)
+        return get_SVHN(
+            get_handler(name), data_dir, training_set_size, validation_set_size
+        )
     elif name == "CIFAR10":
-        return get_CIFAR10(get_handler(name), data_dir)
+        return get_CIFAR10(
+            get_handler(name), training_set_size, validation_set_size, data_dir
+        )
     else:
         raise NotImplementedError
 
@@ -56,7 +69,7 @@ def get_net(name):
         raise NotImplementedError
 
 
-def get_strategy(name:str)->Strategy:
+def get_strategy(name: str) -> Strategy:
     if name == "RandomSampling":
         return RandomSampling()
     elif name == "LeastConfidence":

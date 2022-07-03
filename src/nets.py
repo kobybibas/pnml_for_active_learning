@@ -1,165 +1,9 @@
 import logging
-from typing import Tuple
 
-import numpy as np
-import pytorch_lightning as pl
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
-from torchmetrics.functional import accuracy
 
 logger = logging.getLogger(__name__)
-
-
-class LitClassifier(pl.LightningModule):
-    def __init__(self, net, cfg, device):
-        self.cfg = cfg
-        self.device_ = device
-        self.save_hyperparameters()
-        super().__init__()
-
-        self.cfg = cfg
-        self.clf = net()
-
-        # Loss
-        self.criterion = nn.CrossEntropyLoss()
-
-    def forward(self, x):
-        return self.clf(x)
-
-    def training_step(self, batch, batch_idx):
-        return self._loss_helper(batch, "train")
-
-    def validation_step(self, batch, batch_idx):
-        return self._loss_helper(batch, "val")
-
-    def test_step(self, batch, batch_idx):
-        return self._loss_helper(batch, "test")
-
-    def _loss_helper(self, batch, phase: str = "train"):
-        x, y, idxs = batch
-        y_hat, _ = self.forward(x)
-        loss = self.criterion(y_hat, y)
-        acc = accuracy(y_hat, y)
-
-        self.log(f"loss/{phase}", loss, on_epoch=True, on_step=False)
-        self.log(f"acc/{phase}", acc, on_epoch=True, on_step=False)
-        return {"loss": loss, "acc": acc}
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
-            self.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay
-        )
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=self.cfg.milestones
-        )
-        return [optimizer], [lr_scheduler]
-
-    def predict(self, data):
-        self.clf.eval()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-        preds = []
-        with torch.no_grad():
-            for x, y, idxs in loader:
-                x, y = x.to(self.device_), y.to(self.device_)
-                out, e1 = self.clf(x)
-                pred = out.max(1)[1]
-                preds.append(pred)
-        return torch.hstack(preds).int().cpu()
-
-    def predict_prob(self, data):
-        self.clf.eval()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0,
-        )
-        with torch.no_grad():
-            probs = []
-            for x, y, idxs in loader:
-                x, y = x.to(self.device_), y.to(self.device_)
-                out, e1 = self.clf(x)
-                prob = F.softmax(out, dim=1)
-                probs.append(prob)
-        return torch.vstack(probs).float().cpu()
-
-    def predict_prob_dropout(self, data, n_drop=10):
-        self.clf.train()
-        probs = torch.zeros([len(data), len(np.unique(data.Y))])
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-        for i in range(n_drop):
-            with torch.no_grad():
-                for x, y, idxs in loader:
-                    x, y = x.to(self.device_), y.to(self.device_)
-                    out, e1 = self.clf(x)
-                    prob = F.softmax(out, dim=1)
-                    probs[idxs] += prob.cpu()
-        probs /= n_drop
-        return probs
-
-    def predict_prob_dropout_split(self, data: Dataset, n_drop: int = 10):
-        self.clf.train()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-
-        probs_drop = []
-        for i in range(n_drop):
-            probs = []
-            with torch.no_grad():
-                for x, y, idxs in loader:
-                    x, y = x.to(self.device_), y.to(self.device_)
-                    out, e1 = self.clf(x)
-                    prob = F.softmax(out, dim=1)
-                    probs.append(prob.cpu())
-                    # probs[i][idxs] += F.softmax(out, dim=1).cpu()
-            probs_drop.append(torch.vstack(probs).unsqueeze(0))
-        probs_drop = torch.vstack(probs_drop).float()
-        return probs_drop
-
-    def get_embeddings(self, data) -> torch.Tensor:
-        self.clf.eval()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-
-        embeddings = []
-        with torch.no_grad():
-            for x, _, _ in loader:
-                x = x.to(self.device_)
-                _, e1 = self.clf(x)
-                embeddings.append(e1)
-        return torch.vstack(embeddings)
-
-    def get_emb_logit_prob(
-        self, data, is_norm_features: bool = True
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        self.clf.eval()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-        clf_last_layer = self.clf.get_classifer()
-        embeddings, logits, probs = [], [], []
-        with torch.no_grad():
-            for x, _, _ in loader:
-                x = x.to(self.device_)
-                out, e1 = self.clf(x)
-
-                # Normalize
-                if is_norm_features:
-                    norm = torch.linalg.norm(e1, dim=-1, keepdim=True)
-                    e1 = e1 / norm
-                    # Forward with feature normalization
-                    out = clf_last_layer(e1)
-
-                embeddings.append(e1)
-                logits.append(out)
-                prob = F.softmax(out, dim=1)
-                probs.append(prob)
-        return torch.vstack(embeddings), torch.vstack(logits), torch.vstack(probs)
 
 
 class MNIST_Net(nn.Module):
@@ -169,11 +13,10 @@ class MNIST_Net(nn.Module):
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x_in):
-        x = x_in.view(-1, 28 * 28)
-        e1 = F.relu(self.fc1(x))
-        x = F.dropout(e1)
-        x = self.fc2(x)
-        return x, e1
+        z = x_in.view(-1, 28 * 28)
+        e1 = F.leaky_relu(self.fc1(z))
+        y = self.fc2(e1)
+        return y, e1
 
     def get_embedding_dim(self):
         return 50

@@ -9,23 +9,24 @@ data_dir: ../data
 n_init_labeled: 100 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 3000 # Number of rounds. Default 10
+training_set_size: 1024 # Number of training (labeled and unlabeled) -1 for all
+validation_set_size: 1024 # Validation set size
 dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
 strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 
 SingleLayerPnml:
-  unlabeled_batch_size: 128
-  unlabeled_pool_size: 4096
+  unlabeled_batch_size: 32
+  unlabeled_pool_size: 1024
 
-epochs_max: 100
-epochs_min: 30
+epochs_max: 50
+epochs_min: 50
 batch_size: 64
 batch_size_test: 2048
 num_workers: 0
 lr: 0.1
-milestones: [20, 80]
+milestones: [20, 45]
 momentum: 0.9
 weight_decay: 1e-4
-
 
 job_type: ${dataset_name}
 date: ${now:%Y%m%d_%H}
