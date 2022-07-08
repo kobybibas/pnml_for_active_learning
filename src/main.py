@@ -116,9 +116,12 @@ def execute_active_learning(cfg: DictConfig):
         strategy.update(dataset, query_idxs)
         logger.info(f"\t{cfg.strategy_name} query in {time.time()-t1:.2f} sec")
 
-        img = dataset.X_train[query_idxs]
-        img = PIL.Image.fromarray(img.squeeze().numpy())
-        wandb.log({"Image to label": wandb.Image(img)})
+        if False:
+            img = dataset.X_train[query_idxs]
+            if isinstance(img, torch.Tensor):
+                img = img.squeeze().numpy()
+            img = PIL.Image.fromarray(img)
+            wandb.log({"Image to label": wandb.Image(img)})
 
     logger.info(f"Finish in {time.time()-t0:.1f} sec")
 

@@ -28,8 +28,8 @@ milestones: [20, 45]
 momentum: 0.9
 weight_decay: 1e-4
 
-job_type: ${dataset_name}
 date: ${now:%Y%m%d_%H}
+
 hydra:
   job:
     chdir: True

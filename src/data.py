@@ -82,7 +82,7 @@ class Data:
     def get_transformed_set(
         self, x_data: torch.Tensor, y_labels: torch.Tensor, device: str
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        dataset_h = self.handler(x_data, y_labels.unsqueeze(1))
+        dataset_h = self.handler(x_data, torch.tensor(y_labels).unsqueeze(1))
         loader = DataLoader(dataset_h, shuffle=False, batch_size=128, num_workers=0)
 
         X_transformed, Y_transformed = [], []
@@ -122,10 +122,14 @@ class Data:
         return self.test_dataset
 
     def cal_test_acc(self, preds) -> float:
-        return 1.0 * (self.Y_test == preds).sum().item() / self.n_test
+        return (
+            1.0
+            * (self.Y_test_trans.to(preds.device) == preds).sum().item()
+            / self.n_test
+        )
 
     def cal_test_loss(self, probs: torch.Tensor) -> float:
-        return cross_entropy(probs, self.Y_test).item()
+        return cross_entropy(probs, self.Y_test_trans.to(probs.device)).item()
 
 
 def get_MNIST(
@@ -173,14 +177,22 @@ def get_SVHN(handler, data_dir: str = "../data") -> Data:
     )
 
 
-def get_CIFAR10(handler, data_dir: str = "../data") -> Data:
-    data_train = datasets.CIFAR10(data_dir, train=True, download=True)
-    data_test = datasets.CIFAR10(data_dir, train=False, download=True)
+def get_CIFAR10(
+    handler,
+    training_set_size: int = 40000,
+    validation_set_size: int = 1024,
+    data_dir: str = "../data",
+) -> Data:
+
+    raw_train = datasets.CIFAR10(data_dir, train=True, download=True)
+    raw_test = datasets.CIFAR10(data_dir, train=False, download=True)
     return Data(
-        data_train.data[:40000],
-        torch.LongTensor(data_train.targets)[:40000],
-        data_test.data[:40000],
-        torch.LongTensor(data_test.targets)[:40000],
+        raw_train.data[:training_set_size],
+        raw_train.targets[:training_set_size],
+        raw_train.data[training_set_size : training_set_size + validation_set_size],
+        raw_train.targets[training_set_size : training_set_size + validation_set_size],
+        raw_test.data,
+        raw_test.targets,
         handler,
     )
 

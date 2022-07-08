@@ -37,18 +37,21 @@ class SVHN_Net(nn.Module):
         self.fc3 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(F.max_pool2d(self.conv2(x), 2))
-        x = F.relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
+        x = F.leaky_relu(self.conv1(x))
+        x = F.leaky_relu(F.max_pool2d(self.conv2(x), 2))
+        x = F.leaky_relu(F.max_pool2d(self.conv3_drop(self.conv3(x)), 2))
         x = x.view(-1, 1152)
-        x = F.relu(self.fc1(x))
-        e1 = F.relu(self.fc2(x))
+        x = F.leaky_relu(self.fc1(x))
+        e1 = F.leaky_relu(self.fc2(x))
         x = F.dropout(e1, training=self.training)
         x = self.fc3(x)
         return x, e1
 
     def get_embedding_dim(self):
         return 50
+
+    def get_classifer(self):
+        return self.fc3
 
 
 class CIFAR10_Net(nn.Module):
@@ -61,14 +64,17 @@ class CIFAR10_Net(nn.Module):
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(F.max_pool2d(self.conv2(x), 2))
-        x = F.relu(F.max_pool2d(self.conv3(x), 2))
+        x = F.leaky_relu(self.conv1(x))
+        x = F.leaky_relu(F.max_pool2d(self.conv2(x), 2))
+        x = F.leaky_relu(F.max_pool2d(self.conv3(x), 2))
         x = x.view(-1, 1024)
-        e1 = F.relu(self.fc1(x))
+        e1 = F.leaky_relu(self.fc1(x))
         x = F.dropout(e1, training=self.training)
         x = self.fc2(x)
         return x, e1
 
     def get_embedding_dim(self):
         return 50
+
+    def get_classifer(self):
+        return self.fc2
