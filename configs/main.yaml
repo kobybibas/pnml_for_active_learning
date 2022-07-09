@@ -22,6 +22,7 @@ epochs_max: 50
 epochs_min: 50
 batch_size: 64
 batch_size_test: 2048
+gradient_clip_val: 0.5
 num_workers: 0
 lr: 0.1
 milestones: [20, 45]

@@ -63,6 +63,8 @@ def execute_active_learning(cfg: DictConfig):
         trainer = pl.Trainer(
             max_epochs=cfg.epochs_max,
             min_epochs=cfg.epochs_min,
+            gradient_clip_val=cfg.gradient_clip_val,
+            gradient_clip_algorithm="value",
             default_root_dir=out_dir,
             enable_checkpointing=False,
             gpus=1 if torch.cuda.is_available() else None,
@@ -76,7 +78,7 @@ def execute_active_learning(cfg: DictConfig):
 
         # Execute training
         train_loader, val_loader = get_dataloaders(
-            dataset, cfg.batch_size, cfg.batch_size_test
+            dataset, cfg.batch_size, cfg.batch_size_test,last_train_size=cfg.n_init_labeled + cfg.n_round
         )
         trainer.fit(lit_h, train_loader, val_loader)
         lit_h.clf = lit_h.clf.half()

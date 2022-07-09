@@ -4,7 +4,7 @@ import time
 import numpy as np
 import torch
 from torch.nn.functional import cross_entropy
-from torch.utils.data import DataLoader, Dataset, TensorDataset, Subset
+from torch.utils.data import DataLoader, Dataset, TensorDataset, Subset, RandomSampler
 from torchvision import datasets
 from tqdm import tqdm
 from typing import Tuple
@@ -198,13 +198,16 @@ def get_CIFAR10(
 
 
 def get_dataloaders(
-    dataset, batch_size: int, batch_size_test: int
+    dataset, batch_size: int, batch_size_test: int,last_train_size:int
 ) -> Tuple[DataLoader, DataLoader]:
     train_loader = DataLoader(
         dataset.get_labeled_data()[-1],
-        shuffle=True,
+        shuffle=False,
         batch_size=batch_size,
         num_workers=0,
+        sampler=RandomSampler(
+            dataset.get_labeled_data()[-1], replacement=True, num_samples=last_train_size # Same as final number of samples
+        ),  # Make sure we get a full batch
     )
     val_loader = DataLoader(
         dataset.get_val_data(),
