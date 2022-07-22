@@ -15,17 +15,17 @@ dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
 strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 
 SingleLayerPnml:
-  unlabeled_batch_size: 36
-  unlabeled_pool_size: 1024
+  unlabeled_batch_size: 128
+  unlabeled_pool_size: 4096
 
 epochs_max: 50
 epochs_min: 50
-batch_size: 64
+batch_size: 128
 batch_size_test: 2048
-gradient_clip_val: 0.5
+gradient_clip_val: 1.0
 num_workers: 0
 lr: 0.1
-milestones: [20, 45]
+milestones: [40]
 momentum: 0.9
 weight_decay: 1e-4
 

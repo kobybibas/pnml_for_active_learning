@@ -8,29 +8,9 @@ windows:
           panes:
                   - shell_command:
                             - sleep 0
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=1 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=1 n_init_labeled=1024 n_round=2048 training_set_size=4096
+                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=1 n_init_labeled=1000 n_round=1500 training_set_size=10000 n_query=1
+                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=2 n_init_labeled=1000 n_round=1500 training_set_size=10000 n_query=1
                   - shell_command:
                             - sleep 2
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=2 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=2 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                  - shell_command:
-                            - sleep 4
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=3 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=3 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                  - shell_command:
-                            - sleep 6
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=4 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=4 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                  - shell_command:
-                            - sleep 8
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=5 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=5 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                  - shell_command:
-                            - sleep 10
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=6 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=6 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                  - shell_command:
-                            - sleep 12
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=7 n_init_labeled=1024 n_round=2048 training_set_size=4096
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=7 n_init_labeled=1024 n_round=2048 training_set_size=4096
+                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=1 n_init_labeled=1000 n_round=1500 training_set_size=10000 n_query=1
+                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=2 n_init_labeled=1000 n_round=1500 training_set_size=10000 n_query=1
