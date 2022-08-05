@@ -77,13 +77,13 @@ def execute_active_learning(cfg: DictConfig):
         )
 
         # Execute training
-        train_loader, val_loader = get_dataloaders(
+        train_loader, _ = get_dataloaders(
             dataset,
             cfg.batch_size,
             cfg.batch_size_test,
             last_train_size=cfg.n_init_labeled + cfg.n_round,
         )
-        trainer.fit(lit_h, train_loader, val_loader)
+        trainer.fit(lit_h, train_loader)
         lit_h.clf = lit_h.clf.half()
         lit_h = lit_h.to(device)
 

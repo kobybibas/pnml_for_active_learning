@@ -7,7 +7,6 @@ import torch.linalg as tl
 import wandb
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
-import numpy.linalg as npl
 from .strategy import Strategy
 
 logger = logging.getLogger(__name__)

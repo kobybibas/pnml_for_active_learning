@@ -1,5 +1,6 @@
 import logging
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -80,15 +81,6 @@ class SVHN_Net(nn.Module):
 #         return self.fc2
 
 
-import numpy as np
-import os
-import time
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-
-
 class BasicBlock(nn.Module):
     expansion = 1
 
@@ -117,17 +109,17 @@ class BasicBlock(nn.Module):
             )
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.leaky_relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += self.shortcut(x)
-        out = F.relu(out)
+        out = F.leaky_relu(out)
         return out
 
 
 class CIFAR10_Net(nn.Module):
     def __init__(self, block=BasicBlock, num_blocks=None, num_classes=10):
         if num_blocks is None:
-            num_blocks=[2, 2, 2, 2]
+            num_blocks = [2, 2, 2, 2]
         super(CIFAR10_Net, self).__init__()
         self.in_planes = 64
         self.num_features = 512 * block.expansion
@@ -149,7 +141,7 @@ class CIFAR10_Net(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.leaky_relu(self.bn1(self.conv1(x)))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
