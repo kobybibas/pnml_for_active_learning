@@ -11,10 +11,11 @@ import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning.loggers import WandbLogger
-
+import copy
 from lit_utils import LitClassifier
 from utils import get_dataset, get_net, get_strategy
 from data import get_dataloaders
+from torch import nn
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,25 @@ def execute_active_learning(cfg: DictConfig):
         t1 = time.time()
 
         # Train
+        if rd > 0 and cfg.is_finetune is True:
+            for param in clf_prev.parameters():
+                param.requires_grad = True
+            input_size, output_size = (
+                clf_prev.linear.in_features,
+                clf_prev.linear.out_features,
+            )
+            clf_prev.linear = nn.Linear(input_size, output_size)
+
+            # Finetuning params
+            cfg.epochs_max = 10
+            cfg.epochs_min = 10
+            cfg.lr = 0.01
+
         lit_h = LitClassifier(net, cfg, device)
+
+        if rd > 0 and cfg.is_finetune is True:
+            lit_h.clf = clf_prev
+
         trainer = pl.Trainer(
             max_epochs=cfg.epochs_max,
             min_epochs=cfg.epochs_min,
@@ -84,6 +103,7 @@ def execute_active_learning(cfg: DictConfig):
             last_train_size=cfg.n_init_labeled + cfg.n_round,
         )
         trainer.fit(lit_h, train_loader)
+        clf_prev = copy.deepcopy(lit_h.clf)
         lit_h.clf = lit_h.clf.half()
         lit_h = lit_h.to(device)
 

@@ -11,8 +11,10 @@ n_query: 1 # Number of queries per round. Default 1000
 n_round: 3000 # Number of rounds. Default 10
 training_set_size: 1024 # Number of training (labeled and unlabeled) -1 for all
 validation_set_size: 1024 # Validation set size
-dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
-strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+dataset_name: CIFAR10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+strategy_name: RandomSampling #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+
+is_finetune: true
 
 SingleLayerPnml:
   unlabeled_batch_size: 128

@@ -49,7 +49,9 @@ class LitClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
-            self.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay
+            filter(lambda p: p.requires_grad, self.parameters()),
+            lr=self.cfg.lr,
+            weight_decay=self.cfg.weight_decay,
         )
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=self.cfg.milestones
