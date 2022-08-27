@@ -6,28 +6,25 @@ defaults:
 seed: 1234
 data_dir: ../data
 
-n_init_labeled: 100 # Number of init labeled samples. Default 10000
-n_query: 1 # Number of queries per round. Default 1000
-n_round: 3000 # Number of rounds. Default 10
-training_set_size: 1024 # Number of training (labeled and unlabeled) -1 for all
-validation_set_size: 1024 # Validation set size
+n_init_labeled: 15000 # Number of init labeled samples. Default 10000
+n_query: 32 # Number of queries per round. Default 1000
+n_round: 300 # Number of rounds. Default 10
 dataset_name: CIFAR10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
-strategy_name: RandomSampling #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
-
-is_finetune: true
+strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 
 SingleLayerPnml:
   unlabeled_batch_size: 128
-  unlabeled_pool_size: 4096
+  unlabeled_pool_size: 1000
+  test_set_size: 1000
 
-epochs_max: 50
-epochs_min: 50
+epochs_max: 10
+epochs_min: 10
 batch_size: 128
 batch_size_test: 2048
 gradient_clip_val: 1.0
 num_workers: 0
 lr: 0.1
-milestones: [40]
+milestones: [8]
 momentum: 0.9
 weight_decay: 1e-4
 

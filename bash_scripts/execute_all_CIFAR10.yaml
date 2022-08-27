@@ -7,10 +7,12 @@ windows:
                   - conda activate pnml_for_active_learning
           panes:
                   - shell_command:
-                            - sleep 600
-                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=1 n_init_labeled=15000 n_round=10000 training_set_size=40000 n_query=1 batch_size=64 is_finetune=true
-                            #     - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=2 n_init_labeled=15000 n_round=10000 training_set_size=40000 n_query=1 batch_size=64 is_finetune=true
+                            - sleep 0
+                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=1
+                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=2
+                            - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=3
                   - shell_command:
-                            - sleep 2
-                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=1 n_init_labeled=15000 n_round=10000 training_set_size=40000 n_query=1 batch_size=64 is_finetune=true
-                            #     - python main.py dataset_name=CIFAR10 strategy_name=RandomSampling seed=2 n_init_labeled=15000 n_round=10000 training_set_size=40000 n_query=1 batch_size=64 is_finetune=true
+                            - sleep 5
+                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=1
+                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=2
+                            - python main.py dataset_name=CIFAR10 strategy_name=SingleLayerPnml seed=2

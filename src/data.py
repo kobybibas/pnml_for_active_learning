@@ -14,21 +14,11 @@ logger = logging.getLogger(__name__)
 
 class Data:
     def __init__(
-        self,
-        X_train,
-        Y_train,
-        X_val,
-        Y_val,
-        X_test,
-        Y_test,
-        handler: Dataset,
-        device: str = None,
+        self, X_train, Y_train, X_test, Y_test, handler: Dataset, device: str = None,
     ):
         t0 = time.time()
         self.X_train = X_train
         self.Y_train = Y_train
-        self.X_val = X_val
-        self.Y_val = Y_val
         self.X_test = X_test
         self.Y_test = Y_test
         self.handler = handler
@@ -43,36 +33,28 @@ class Data:
         self.labeled_idxs = np.zeros(self.n_pool, dtype=bool)
 
         # Propogate trought dataloader to have vectors transformed vectors to the experimnet
-        (self.X_train_trans, self.Y_train_trans,) = self.get_transformed_set(
+        self.X_train_trans, self.Y_train_trans = self.get_transformed_set(
             self.X_train, self.Y_train, self.device
         )
-        self.X_val_trans, self.Y_val_trans = self.get_transformed_set(
-            self.X_val, self.Y_val, self.device
-        )
+
         self.X_test_trans, self.Y_test_trans = self.get_transformed_set(
             self.X_test, self.Y_test, self.device
         )
-        trainset_size, valset_size, testset_size = (
+        trainset_size, testset_size = (
             len(self.X_train_trans),
-            len(self.X_val_trans),
             len(self.X_test_trans),
         )
 
         self.train_dataset = TensorDataset(
             self.X_train_trans, self.Y_train_trans, torch.arange(trainset_size),
         )
-        self.val_dataset = TensorDataset(
-            self.X_val_trans, self.Y_val_trans, torch.arange(valset_size),
-        )
+
         self.test_dataset = TensorDataset(
             self.X_test_trans, self.Y_test_trans, torch.arange(testset_size),
         )
 
         logger.info(
             f"Train. [Data Labels]=[{self.X_train_trans.shape} {self.Y_train_trans.shape}]"
-        )
-        logger.info(
-            f"Validation. [Data Labels]=[{self.X_val_trans.shape} {self.Y_val_trans.shape}]"
         )
         logger.info(
             f"Test. [Data Labels]=[{self.X_test_trans.shape} {self.Y_test_trans.shape}]"
@@ -90,7 +72,7 @@ class Data:
             X_transformed.append(x)
             Y_transformed.append(y)
 
-        X_transformed = torch.vstack(X_transformed).to(device).half()
+        X_transformed = torch.vstack(X_transformed).to(device)
         Y_transformed = torch.vstack(Y_transformed).squeeze().to(device)
 
         return X_transformed, Y_transformed
@@ -115,9 +97,6 @@ class Data:
     def get_train_data(self) -> Tuple[np.array, TensorDataset]:
         return self.labeled_idxs.copy(), self.train_dataset
 
-    def get_val_data(self) -> TensorDataset:
-        return self.val_dataset
-
     def get_test_data(self) -> TensorDataset:
         return self.test_dataset
 
@@ -133,10 +112,7 @@ class Data:
 
 
 def get_MNIST(
-    handler,
-    training_set_size: int = 40000,
-    validation_set_size: int = 1024,
-    data_dir: str = "../data",
+    handler, training_set_size: int = 40000, data_dir: str = "../data",
 ) -> Data:
 
     raw_train = datasets.MNIST(data_dir, train=True, download=True)
@@ -145,8 +121,6 @@ def get_MNIST(
     return Data(
         raw_train.data[:training_set_size],
         raw_train.targets[:training_set_size],
-        raw_train.data[training_set_size : training_set_size + validation_set_size],
-        raw_train.targets[training_set_size : training_set_size + validation_set_size],
         raw_test.data,
         raw_test.targets,
         handler,
@@ -177,28 +151,17 @@ def get_SVHN(handler, data_dir: str = "../data") -> Data:
     )
 
 
-def get_CIFAR10(
-    handler,
-    training_set_size: int = 40000,
-    validation_set_size: int = 1024,
-    data_dir: str = "../data",
-) -> Data:
+def get_CIFAR10(handler, data_dir: str = "../data",) -> Data:
 
     raw_train = datasets.CIFAR10(data_dir, train=True, download=True)
     raw_test = datasets.CIFAR10(data_dir, train=False, download=True)
     return Data(
-        raw_train.data[:training_set_size],
-        raw_train.targets[:training_set_size],
-        raw_train.data[training_set_size : training_set_size + validation_set_size],
-        raw_train.targets[training_set_size : training_set_size + validation_set_size],
-        raw_test.data,
-        raw_test.targets,
-        handler,
+        raw_train.data, raw_train.targets, raw_test.data, raw_test.targets, handler,
     )
 
 
 def get_dataloaders(
-    dataset, batch_size: int, batch_size_test: int,last_train_size:int
+    dataset, batch_size: int, batch_size_test: int, last_train_size: int
 ) -> Tuple[DataLoader, DataLoader]:
     train_loader = DataLoader(
         dataset.get_labeled_data()[-1],
@@ -206,13 +169,16 @@ def get_dataloaders(
         batch_size=batch_size,
         num_workers=0,
         sampler=RandomSampler(
-            dataset.get_labeled_data()[-1], replacement=True, num_samples=last_train_size # Same as final number of samples
+            dataset.get_labeled_data()[-1],
+            replacement=True,
+            num_samples=last_train_size,  # Same as final number of samples
         ),  # Make sure we get a full batch
     )
-    val_loader = DataLoader(
-        dataset.get_val_data(),
+
+    test_loader = DataLoader(
+        dataset.get_test_data(),
         shuffle=False,
         batch_size=batch_size_test,
         num_workers=0,
     )
-    return train_loader, val_loader
+    return train_loader, test_loader

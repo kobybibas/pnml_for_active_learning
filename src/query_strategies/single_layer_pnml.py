@@ -16,7 +16,8 @@ class SingleLayerPnml(Strategy):
     def __init__(self):
         self.eps = 1e-6
         self.unlabeled_batch_size = 64
-        self.unlabeled_pool_size = 4096
+        self.unlabeled_pool_size = 1000
+        self.test_set_size = 1000
 
     def add_ones(self, embs: torch.Tensor) -> torch.Tensor:
         num_samples, feature_size = embs.shape
@@ -152,9 +153,9 @@ class SingleLayerPnml(Strategy):
             [test_embs @ P_N_minus_1 @ xn_i.unsqueeze(1) for xn_i in xn]
         ).transpose(1, 0)
         x_proj = torch.add(
-            (((1 + a) / (1 + 2 * a)) @ x_P_N_minus_1_xt.unsqueeze(0)).float(),
-            ((-1 / (1 + 2 * a)) * (xn_P_N_minus_1_xt ** 2)).float(),
-        )  # .half()
+            ((1 + a) / (1 + 2 * a)) @ x_P_N_minus_1_xt.unsqueeze(0),
+            (-1 / (1 + 2 * a)) * (xn_P_N_minus_1_xt ** 2),
+        )
 
         assert x_proj.size(0) == unlabeled_size
         assert x_proj.size(1) == test_size
@@ -185,78 +186,18 @@ class SingleLayerPnml(Strategy):
         assert not torch.isinf(nf).any().item()
         return nf
 
-    def query(self, n, net, dataset):
-        logger.info("SingleLayerPnml: query")
-        torch.set_grad_enabled(False)
-
-        # Training set
-        t1 = time.time()
-        train_embs, _, _ = net.get_emb_logit_prob(dataset.get_labeled_data()[1])
-        train_embs = self.add_ones(train_embs)  # .float()
-        training_size, num_features = train_embs.shape
-        logger.info(
-            f"Training: get_embeddings in {time.time()-t1:.1f}. {[training_size, num_features]=}"
-        )
-
-        # Unlabeled set
-        t1 = time.time()
-        unlabeled_idxs, unlabeled_data = dataset.get_unlabeled_data()
-        unlabeled_embs, unlabeled_logits, _ = net.get_emb_logit_prob(unlabeled_data)
-        # -- Reduce number of unlabeled to evaluate:
-        # idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
-        # unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
-        #     unlabeled_embs[idxs],
-        #     unlabeled_logits[idxs],
-        #     unlabeled_idxs[idxs],
-        # )
-        unlabeled_embs = self.add_ones(unlabeled_embs)
-        unlabeled_size, num_features = unlabeled_embs.shape
-        logger.info(
-            f"Unlabeled: get_embeddings in {time.time()-t1:.1f}. {[unlabeled_size, num_features]=}"
-        )
-
-        # Test set
-        t1 = time.time()
-        test_embs, test_logits, _ = net.get_emb_logit_prob(dataset.get_test_data())
-        test_embs = self.add_ones(test_embs)
-        test_size, num_features = test_embs.shape
-        logger.info(
-            f"Test: get_embeddings in {time.time()-t1:.1f}. {[test_size, num_features]=}"
-        )
-
-        # Float for stable calculations
-        train_embs = train_embs.float()
-        unlabeled_embs = unlabeled_embs.float()
-        unlabeled_logits = unlabeled_logits.float()
-        test_embs = test_embs.float()
-        test_logits = test_logits.float()
-
-        # Dataloder
-        unlabeled_dataloader = DataLoader(
-            TensorDataset(unlabeled_embs, unlabeled_logits),
-            num_workers=0,
-            batch_size=self.unlabeled_batch_size,
-        )
+    def choose_single_unlabel(
+        self, unlabeled_dataloader, theta_n_minus_1, train_embs, test_embs, test_logits,
+    ):
 
         # Inverse of training set
         P_N_minus_1 = self.calc_P_N_minus_1(train_embs)
 
-        # ERM classifier: num_features x num_labels
-        clf = net.clf.get_classifer().float()
-        theta_n_minus_1 = torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone()
-
         # Test projection on training design matrix
-        t1 = time.time()
         x_P_N_minus_1_xt = self.calc_x_P_N_minus_1_xt(test_embs, P_N_minus_1)
-        logger.info(
-            f"calc_x_P_N_minus_1_xt in {time.time()-t1:.1f} sec. {x_P_N_minus_1_xt.shape=}"
-        )
 
-        nfs_with_unlabeled = []
+        nfs_with_unlabeled, theta_c_ns = [], []
         for xn, logit_n in tqdm(unlabeled_dataloader):
-            # xn: num_unlabeled_batch x num_features
-            # logit_n: num_unlabeled_batch x num_labels. xn_t @ theta_n_minus_1
-            unlabeled_size, _ = xn.shape
 
             # Calculate the new learner with the unlabeled data
             theta_c_n, xn_P_N_minus_1_xnt = self.calc_theta_c_n(
@@ -282,35 +223,128 @@ class SingleLayerPnml(Strategy):
 
             # Save: Average y_n over the test set,
             nfs_with_unlabeled.append(nf.mean(axis=1))
+            theta_c_ns.append(theta_c_n)
 
         nfs_with_unlabeled = torch.vstack(nfs_with_unlabeled)
+        theta_c_ns = torch.vstack(theta_c_ns)
 
         # Worst y_n: Average y_n the test set, then take the worst y_n
         nf_of_max_yn, max_yn_values = nfs_with_unlabeled.max(dim=-1)
+        min_xn_idx = nf_of_max_yn.argmin()
+        max_yn_value = max_yn_values[min_xn_idx]
+        nf_of_chosen = nf_of_max_yn[min_xn_idx]
+        theta_c_n = theta_c_ns[min_xn_idx, max_yn_value]
 
-        # Sort from min to max
-        min_xn_values, min_xn_idx = nf_of_max_yn.sort(descending=False)
-        max_yn_value = max_yn_values[min_xn_idx][:n].item()
+        return min_xn_idx.item(), max_yn_value.item(), theta_c_n, nf_of_chosen.item()
 
+    def query(self, n, net, dataset):
+        logger.info("SingleLayerPnml: query")
+        torch.set_grad_enabled(False)
+
+        # Training set
+        t1 = time.time()
+        train_embs, _, _ = net.get_emb_logit_prob(dataset.get_labeled_data()[1])
+        train_embs = self.add_ones(train_embs)
+        training_size, num_features = train_embs.shape
         logger.info(
-            f"{min_xn_values[:2]=}, {min_xn_values[-2:]=}, {min_xn_values.mean().item()=}"
+            f"Training: get_embeddings in {time.time()-t1:.1f}. {[training_size, num_features]=}"
         )
-        logger.info(f"{torch.bincount(max_yn_values)=}")
 
-        chosen_idxs = unlabeled_idxs[min_xn_idx[:n]]
-        actual_yn_value = dataset.Y_train[chosen_idxs]
-        logger.info(f"yn_value: [max actual]=[{max_yn_value} {actual_yn_value}]")
+        # ------------ #
+        # Unlabeled set
+        # ------------ #
+        t1 = time.time()
+        unlabeled_idxs, unlabeled_data = dataset.get_unlabeled_data()
+        unlabeled_embs, unlabeled_logits, _ = net.get_emb_logit_prob(unlabeled_data)
 
-        # Finalize
-        torch.set_grad_enabled(True)
-        wandb.log(
-            {
-                "min_regret": min_xn_values[0].item(),
-                "avg_regret": min_xn_values.mean().item(),
-                "max_regret": min_xn_values[-1].item(),
-                "max_equal_true": torch.mean(
-                    torch.tensor(max_yn_value == actual_yn_value).float()
-                ).item(),
-            }
+        # Reduce number of unlabeled to evaluate:
+        idxs = torch.randperm(len(unlabeled_embs))[: self.unlabeled_pool_size]
+        unlabeled_embs, unlabeled_logits, unlabeled_idxs = (
+            unlabeled_embs[idxs],
+            unlabeled_logits[idxs],
+            unlabeled_idxs[idxs],
         )
+
+        unlabeled_embs = self.add_ones(unlabeled_embs)
+        unlabeled_size, num_features = unlabeled_embs.shape
+        logger.info(
+            f"Unlabeled: get_embeddings in {time.time()-t1:.1f}. {[unlabeled_size, num_features]=}"
+        )
+
+        # -------- #
+        # Test set
+        # -------- #
+        t1 = time.time()
+        test_embs, test_logits, _ = net.get_emb_logit_prob(dataset.get_test_data())
+
+        # Reduce number of test set to evaluate:
+        idxs = torch.randperm(len(test_embs))[: self.test_set_size]
+        test_embs, test_logits = (
+            test_embs[idxs],
+            test_logits[idxs],
+        )
+
+        test_embs = self.add_ones(test_embs)
+        test_size, num_features = test_embs.shape
+        logger.info(
+            f"Test: get_embeddings in {time.time()-t1:.1f}. {[test_size, num_features]=}"
+        )
+
+        # ERM classifier: num_features x num_labels
+        clf = net.clf.get_classifer()
+        theta_n_minus_1 = torch.hstack([clf.weight, clf.bias.unsqueeze(-1)]).clone()
+
+        chosen_idxs = []
+        for n_i in range(n):
+
+            unlabeled_dataloader = DataLoader(
+                TensorDataset(unlabeled_embs, unlabeled_logits),
+                num_workers=0,
+                batch_size=self.unlabeled_batch_size,
+            )
+
+            (
+                min_xn_idx,
+                max_yn_value,
+                theta_c_n,
+                nf_of_chosen,
+            ) = self.choose_single_unlabel(
+                unlabeled_dataloader,
+                theta_n_minus_1,
+                train_embs,
+                test_embs,
+                test_logits,
+            )
+
+            # Save chosen index
+            chosen_unlabeled_idx = unlabeled_idxs[min_xn_idx]
+            chosen_unlabeled_emb = unlabeled_embs[min_xn_idx]
+            chosen_idxs.append(chosen_unlabeled_idx)
+
+            # Remove chosen index from unlabel
+            unlabeled_embs = torch.vstack(
+                (unlabeled_embs[:min_xn_idx], unlabeled_embs[min_xn_idx + 1 :])
+            )
+            unlabeled_logits = torch.vstack(
+                (unlabeled_logits[:min_xn_idx], unlabeled_logits[min_xn_idx + 1 :])
+            )
+
+            # Define new training set
+            train_embs = torch.vstack((train_embs, chosen_unlabeled_emb))
+            theta_n_minus_1 = theta_c_n
+
+            # Logging
+            actual_yn_value = dataset.Y_train[chosen_unlabeled_idx]
+            logger.info(
+                f"[{n_i}/{n}] yn_value: [max actual]=[{max_yn_value} {actual_yn_value}]. {nf_of_chosen=}"
+            )
+
+            wandb.log(
+                {
+                    "nf_of_chosen": nf_of_chosen,
+                    "actual_yn_value": actual_yn_value,
+                    "max_yn_value": max_yn_value,
+                }
+            )
+
         return chosen_idxs

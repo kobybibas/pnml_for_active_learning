@@ -40,9 +40,7 @@ def execute_active_learning(cfg: DictConfig):
     logger.info(cfg)
 
     # Load dataset
-    dataset = get_dataset(
-        cfg.dataset_name, cfg.training_set_size, cfg.validation_set_size, cfg.data_dir
-    )
+    dataset = get_dataset(cfg.dataset_name, cfg.data_dir)
 
     # Architecture
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -53,31 +51,14 @@ def execute_active_learning(cfg: DictConfig):
     if cfg.strategy_name == "SingleLayerPnml":
         strategy.unlabeled_batch_size = cfg.SingleLayerPnml.unlabeled_batch_size
         strategy.unlabeled_pool_size = cfg.SingleLayerPnml.unlabeled_pool_size
+        strategy.test_set_size = cfg.SingleLayerPnml.test_set_size
 
     # Active learning
     dataset.initialize_labels(cfg.n_init_labeled)
     for rd in range(cfg.n_round):
         t1 = time.time()
 
-        # Train
-        if rd > 0 and cfg.is_finetune is True:
-            for param in clf_prev.parameters():
-                param.requires_grad = True
-            input_size, output_size = (
-                clf_prev.linear.in_features,
-                clf_prev.linear.out_features,
-            )
-            clf_prev.linear = nn.Linear(input_size, output_size)
-
-            # Finetuning params
-            cfg.epochs_max = 10
-            cfg.epochs_min = 10
-            cfg.lr = 0.01
-
         lit_h = LitClassifier(net, cfg, device)
-
-        if rd > 0 and cfg.is_finetune is True:
-            lit_h.clf = clf_prev
 
         trainer = pl.Trainer(
             max_epochs=cfg.epochs_max,
@@ -88,7 +69,6 @@ def execute_active_learning(cfg: DictConfig):
             enable_checkpointing=False,
             gpus=1 if torch.cuda.is_available() else None,
             logger=wandb_logger,
-            precision=16,
             num_sanity_val_steps=0,
             enable_progress_bar=rd == 0,
             enable_model_summary=rd == 0,
@@ -96,15 +76,12 @@ def execute_active_learning(cfg: DictConfig):
         )
 
         # Execute training
-        train_loader, _ = get_dataloaders(
-            dataset,
-            cfg.batch_size,
-            cfg.batch_size_test,
-            last_train_size=cfg.n_init_labeled + cfg.n_round,
+        train_loader, test_loader = get_dataloaders(
+            dataset, cfg.batch_size, cfg.batch_size_test, last_train_size=50000,
         )
-        trainer.fit(lit_h, train_loader)
-        clf_prev = copy.deepcopy(lit_h.clf)
-        lit_h.clf = lit_h.clf.half()
+        trainer.fit(
+            lit_h, train_loader, val_dataloaders=test_loader if rd == 0 else None
+        )
         lit_h = lit_h.to(device)
 
         # Calculate performance
@@ -140,13 +117,6 @@ def execute_active_learning(cfg: DictConfig):
         query_idxs = strategy.query(cfg.n_query, lit_h, dataset)
         strategy.update(dataset, query_idxs)
         logger.info(f"\t{cfg.strategy_name} query in {time.time()-t1:.2f} sec")
-
-        if False:
-            img = dataset.X_train[query_idxs]
-            if isinstance(img, torch.Tensor):
-                img = img.squeeze().numpy()
-            img = PIL.Image.fromarray(img)
-            wandb.log({"Image to label": wandb.Image(img)})
 
     logger.info(f"Finish in {time.time()-t0:.1f} sec")
 
