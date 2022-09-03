@@ -233,7 +233,9 @@ class SingleLayerPnml(Strategy):
         min_xn_idx = nf_of_max_yn.argmin()
         max_yn_value = max_yn_values[min_xn_idx]
         nf_of_chosen = nf_of_max_yn[min_xn_idx]
-        theta_c_n = theta_c_ns[min_xn_idx, max_yn_value]
+        theta_c_n = theta_c_ns[
+            min_xn_idx, max_yn_value
+        ]  # Classifer than was trained with xn and max_yn
 
         return min_xn_idx.item(), max_yn_value.item(), theta_c_n, nf_of_chosen.item()
 
@@ -336,7 +338,7 @@ class SingleLayerPnml(Strategy):
             # Logging
             actual_yn_value = dataset.Y_train[chosen_unlabeled_idx]
             logger.info(
-                f"[{n_i}/{n}] yn_value: [max actual]=[{max_yn_value} {actual_yn_value}]. {nf_of_chosen=}"
+                f"[{n_i}/{n-1}] yn_value: [max actual]=[{max_yn_value} {actual_yn_value}]. {nf_of_chosen=}"
             )
 
             wandb.log(

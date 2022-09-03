@@ -61,8 +61,8 @@ def execute_active_learning(cfg: DictConfig):
         lit_h = LitClassifier(net, cfg, device)
 
         trainer = pl.Trainer(
-            max_epochs=cfg.epochs_max,
-            min_epochs=cfg.epochs_min,
+            max_epochs=cfg.epochs,
+            min_epochs=cfg.epochs,
             gradient_clip_val=cfg.gradient_clip_val,
             gradient_clip_algorithm="value",
             default_root_dir=out_dir,

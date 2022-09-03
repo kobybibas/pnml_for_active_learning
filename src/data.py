@@ -111,19 +111,13 @@ class Data:
         return cross_entropy(probs, self.Y_test_trans.to(probs.device)).item()
 
 
-def get_MNIST(
-    handler, training_set_size: int = 40000, data_dir: str = "../data",
-) -> Data:
+def get_MNIST(handler, data_dir: str = "../data",) -> Data:
 
     raw_train = datasets.MNIST(data_dir, train=True, download=True)
     raw_test = datasets.MNIST(data_dir, train=False, download=True)
 
     return Data(
-        raw_train.data[:training_set_size],
-        raw_train.targets[:training_set_size],
-        raw_test.data,
-        raw_test.targets,
-        handler,
+        raw_train.data, raw_train.targets, raw_test.data, raw_test.targets, handler,
     )
 
 

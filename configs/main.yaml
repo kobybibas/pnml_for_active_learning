@@ -17,8 +17,7 @@ SingleLayerPnml:
   unlabeled_pool_size: 1000
   test_set_size: 1000
 
-epochs_max: 10
-epochs_min: 10
+epochs: 10
 batch_size: 128
 batch_size_test: 2048
 gradient_clip_val: 1.0
