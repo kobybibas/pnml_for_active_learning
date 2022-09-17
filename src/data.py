@@ -1,67 +1,66 @@
 import logging
 import time
+from typing import Tuple
 
 import numpy as np
 import torch
 from torch.nn.functional import cross_entropy
-from torch.utils.data import DataLoader, Dataset, TensorDataset, Subset, RandomSampler
+from torch.utils.data import (
+    DataLoader,
+    Dataset,
+    Subset,
+    TensorDataset,
+    WeightedRandomSampler,
+)
 from torchvision import datasets
 from tqdm import tqdm
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class Data:
     def __init__(
-        self, X_train, Y_train, X_test, Y_test, handler: Dataset, device: str = None,
+        self,
+        X_train,
+        Y_train,
+        X_val,
+        Y_val,
+        X_test,
+        Y_test,
+        handler: Dataset,
+        device: str = None,
     ):
         t0 = time.time()
-        self.X_train = X_train
-        self.Y_train = Y_train
-        self.X_test = X_test
-        self.Y_test = Y_test
         self.handler = handler
 
         self.device = device
         if self.device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        self.n_pool = len(X_train)
-        self.n_test = len(X_test)
-
+        self.n_pool, self.n_val, self.n_test = len(X_train), len(X_val), len(X_test)
         self.labeled_idxs = np.zeros(self.n_pool, dtype=bool)
 
         # Propogate trought dataloader to have vectors transformed vectors to the experimnet
-        self.X_train_trans, self.Y_train_trans = self.get_transformed_set(
-            self.X_train, self.Y_train, self.device
-        )
-
-        self.X_test_trans, self.Y_test_trans = self.get_transformed_set(
-            self.X_test, self.Y_test, self.device
-        )
-        trainset_size, testset_size = (
-            len(self.X_train_trans),
-            len(self.X_test_trans),
-        )
+        self.X_train, self.Y_train = self.transfor_set(X_train, Y_train, self.device)
+        self.X_val, self.Y_val = self.transfor_set(X_val, Y_val, self.device)
+        self.X_test, self.Y_test = self.transfor_set(X_test, Y_test, self.device)
 
         self.train_dataset = TensorDataset(
-            self.X_train_trans, self.Y_train_trans, torch.arange(trainset_size),
+            self.X_train, self.Y_train, torch.arange(len(self.X_train)),
         )
-
+        self.val_dataset = TensorDataset(
+            self.X_val, self.Y_val, torch.arange(len(self.X_val)),
+        )
         self.test_dataset = TensorDataset(
-            self.X_test_trans, self.Y_test_trans, torch.arange(testset_size),
+            self.X_test, self.Y_test, torch.arange(len(self.X_test)),
         )
 
-        logger.info(
-            f"Train. [Data Labels]=[{self.X_train_trans.shape} {self.Y_train_trans.shape}]"
-        )
-        logger.info(
-            f"Test. [Data Labels]=[{self.X_test_trans.shape} {self.Y_test_trans.shape}]"
-        )
+        logger.info(f"Train. [Data Labels]=[{self.X_train.shape} {self.Y_train.shape}]")
+        logger.info(f"Val. [Data Labels]=[{self.X_val.shape} {self.Y_val.shape}]")
+        logger.info(f"Test. [Data Labels]=[{self.X_test.shape} {self.Y_test.shape}]")
         logger.info(f"Data __init__ in {time.time()-t0:.1f} sec")
 
-    def get_transformed_set(
+    def transfor_set(
         self, x_data: torch.Tensor, y_labels: torch.Tensor, device: str
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         dataset_h = self.handler(x_data, torch.tensor(y_labels).unsqueeze(1))
@@ -84,7 +83,7 @@ class Data:
         self.labeled_idxs[tmp_idxs[:num]] = True
 
     def get_labeled_labels(self) -> torch.Tensor:
-        return self.Y_train_trans[self.labeled_idxs]
+        return self.Y_train[self.labeled_idxs]
 
     def get_labeled_data(self) -> Tuple[np.array, Subset]:
         labeled_idxs = np.arange(self.n_pool)[self.labeled_idxs]
@@ -97,27 +96,40 @@ class Data:
     def get_train_data(self) -> Tuple[np.array, TensorDataset]:
         return self.labeled_idxs.copy(), self.train_dataset
 
+    def get_val_data(self) -> Tuple[np.array, TensorDataset]:
+        return self.val_dataset
+
     def get_test_data(self) -> TensorDataset:
         return self.test_dataset
 
     def cal_test_acc(self, preds) -> float:
-        return (
-            1.0
-            * (self.Y_test_trans.to(preds.device) == preds).sum().item()
-            / self.n_test
-        )
+        return 1.0 * (self.Y_test.to(preds.device) == preds).sum().item() / self.n_test
 
     def cal_test_loss(self, probs: torch.Tensor) -> float:
-        return cross_entropy(probs, self.Y_test_trans.to(probs.device)).item()
+        return cross_entropy(probs, self.Y_test.to(probs.device)).item()
 
 
-def get_MNIST(handler, data_dir: str = "../data",) -> Data:
-
+def get_MNIST(
+    handler, data_dir: str = "../data", validation_set_size: int = 1024
+) -> Data:
     raw_train = datasets.MNIST(data_dir, train=True, download=True)
     raw_test = datasets.MNIST(data_dir, train=False, download=True)
 
+    train_data = raw_train.data[:-validation_set_size]
+    train_targets = raw_train.targets[:-validation_set_size]
+    val_data = raw_train.data[-validation_set_size:]
+    val_targets = raw_train.targets[-validation_set_size:]
+    test_data = raw_test.data
+    test_targets = raw_test.targets
+
     return Data(
-        raw_train.data, raw_train.targets, raw_test.data, raw_test.targets, handler,
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+        handler,
     )
 
 
@@ -155,24 +167,34 @@ def get_CIFAR10(handler, data_dir: str = "../data",) -> Data:
 
 
 def get_dataloaders(
-    dataset, batch_size: int, batch_size_test: int, last_train_size: int
-) -> Tuple[DataLoader, DataLoader]:
-    train_loader = DataLoader(
-        dataset.get_labeled_data()[-1],
-        shuffle=False,
-        batch_size=batch_size,
-        num_workers=0,
-        sampler=RandomSampler(
-            dataset.get_labeled_data()[-1],
-            replacement=True,
-            num_samples=last_train_size,  # Same as final number of samples
-        ),  # Make sure we get a full batch
+    dataset, batch_size: int
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
+
+    # Upsample sparse data
+    train_dataset = dataset.get_labeled_data()[-1]
+    label_bin_count = dataset.get_labeled_labels().bincount()
+    class_weights = label_bin_count.sum() / label_bin_count
+    sample_weights = [0] * len(train_dataset)
+    for idx, (_, label, _) in enumerate(train_dataset):
+        class_weight = class_weights[label]
+        sample_weights[idx] = class_weight.cpu().item()
+
+    sampler = WeightedRandomSampler(
+        weights=sample_weights, num_samples=len(train_dataset), replacement=True,
     )
 
-    test_loader = DataLoader(
-        dataset.get_test_data(),
-        shuffle=False,
-        batch_size=batch_size_test,
+    train_loader = DataLoader(
+        train_dataset,
+        # shuffle=True,
+        batch_size=batch_size,
         num_workers=0,
+        drop_last=True,
+        sampler=sampler,
     )
-    return train_loader, test_loader
+    val_loader = DataLoader(
+        dataset.get_val_data(), shuffle=False, batch_size=batch_size, num_workers=0,
+    )
+    test_loader = DataLoader(
+        dataset.get_test_data(), shuffle=False, batch_size=batch_size, num_workers=0,
+    )
+    return train_loader, val_loader, test_loader

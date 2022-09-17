@@ -1,19 +1,19 @@
-from handlers import MNIST_Handler, SVHN_Handler, CIFAR10_Handler
-from data import get_MNIST, get_FashionMNIST, get_SVHN, get_CIFAR10
-from nets import MNIST_Net, SVHN_Net, CIFAR10_Net
+from data import get_CIFAR10, get_FashionMNIST, get_MNIST, get_SVHN
+from handlers import CIFAR10_Handler, MNIST_Handler, SVHN_Handler
+from nets import CIFAR10_Net, MNIST_Net, SVHN_Net
 from query_strategies import (
-    RandomSampling,
-    LeastConfidence,
-    MarginSampling,
-    EntropySampling,
-    LeastConfidenceDropout,
-    MarginSamplingDropout,
-    EntropySamplingDropout,
-    KMeansSampling,
-    KCenterGreedy,
-    BALDDropout,
     AdversarialBIM,
     AdversarialDeepFool,
+    BALDDropout,
+    EntropySampling,
+    EntropySamplingDropout,
+    KCenterGreedy,
+    KMeansSampling,
+    LeastConfidence,
+    LeastConfidenceDropout,
+    MarginSampling,
+    MarginSamplingDropout,
+    RandomSampling,
     SingleLayerPnml,
 )
 from query_strategies.strategy import Strategy
@@ -30,11 +30,9 @@ def get_handler(name):
         return CIFAR10_Handler
 
 
-def get_dataset(
-    name: str, data_dir: str = "../data",
-):
+def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int = 1024):
     if name == "MNIST":
-        return get_MNIST(get_handler(name), data_dir)
+        return get_MNIST(get_handler(name), data_dir, validation_set_size)
     elif name == "FashionMNIST":
         return get_FashionMNIST(get_handler(name), data_dir)
     elif name == "SVHN":

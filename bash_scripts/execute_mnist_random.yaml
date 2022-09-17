@@ -1,0 +1,21 @@
+session_name: al
+windows:
+        - window_name: execute_all
+          # layout: tiled
+          shell_command_before:
+                  - cd ../src # run as a first command in all panes
+                  - conda activate pnml_for_active_learning
+                  - export WANDB_GROUP_ID=random_123
+          panes:
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=1 n_init_labeled=100 n_round=350 n_query=1
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=2 n_init_labeled=100 n_round=350 n_query=1
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=100 n_round=350 n_query=1
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=4 n_init_labeled=100 n_round=350 n_query=1
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=5 n_init_labeled=100 n_round=350 n_query=1
+                  - shell_command:
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=6 n_init_labeled=100 n_round=350 n_query=1

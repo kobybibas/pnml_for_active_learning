@@ -6,28 +6,35 @@ defaults:
 seed: 1234
 data_dir: ../data
 
-n_init_labeled: 15000 # Number of init labeled samples. Default 10000
-n_query: 32 # Number of queries per round. Default 1000
-n_round: 300 # Number of rounds. Default 10
-dataset_name: CIFAR10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+n_init_labeled: 250 # Number of init labeled samples. Default 10000
+n_query: 1 # Number of queries per round. Default 1000
+n_round: 400 # Number of rounds. Default 10
+dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
 strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+validation_set_size: 1024
 
 SingleLayerPnml:
   unlabeled_batch_size: 128
-  unlabeled_pool_size: 1000
+  unlabeled_pool_size: 1024
   test_set_size: 1000
+  parameter_lr: 1.0
 
-epochs: 10
-batch_size: 128
-batch_size_test: 2048
+# Optimization
+max_epochs: 300
+min_epochs: 10
+batch_size: 64
+batch_size_test: 128
 gradient_clip_val: 1.0
 num_workers: 0
-lr: 0.1
-milestones: [8]
+lr: 0.01
 momentum: 0.9
 weight_decay: 1e-4
+early_stopping_patience: 4
+lr_scheduler_patience: 2
 
-date: ${now:%Y%m%d_%H}
+# Model
+temperature: 1
+is_norm_features: true
 
 hydra:
   job:

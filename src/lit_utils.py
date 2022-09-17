@@ -48,15 +48,26 @@ class LitClassifier(pl.LightningModule):
         return {"loss": loss, "acc": acc}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
+        optimizer = torch.optim.Adam(
             filter(lambda p: p.requires_grad, self.parameters()),
             lr=self.cfg.lr,
             weight_decay=self.cfg.weight_decay,
         )
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=self.cfg.milestones
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, "min", patience=self.cfg.lr_scheduler_patience,
         )
-        return [optimizer], [lr_scheduler]
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": lr_scheduler,
+                "interval": "epoch",
+                "frequency": 1,
+                "monitor": "loss/val",
+                "strict": True,
+                "name": None,
+            },
+        }
 
     def predict(self, data):
         self.clf.eval()
@@ -126,7 +137,7 @@ class LitClassifier(pl.LightningModule):
         return torch.vstack(embeddings)
 
     def get_emb_logit_prob(
-        self, data, is_norm_features: bool = True
+        self, data
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         self.clf.eval()
         loader = DataLoader(
@@ -140,9 +151,14 @@ class LitClassifier(pl.LightningModule):
                 out, e1 = self.clf(x)
 
                 # Normalize
-                if is_norm_features:
+                if self.cfg.is_norm_features:
                     norm = torch.linalg.norm(e1, dim=-1, keepdim=True)
                     e1 = e1 / norm
+                    # Forward with feature normalization
+                    out = clf_last_layer(e1)
+
+                if self.cfg.temperature > 1.0:
+                    e1 = e1 / self.cfg.temperature
                     # Forward with feature normalization
                     out = clf_last_layer(e1)
 

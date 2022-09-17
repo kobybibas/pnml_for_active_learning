@@ -5,17 +5,15 @@ import time
 
 import hydra
 import numpy as np
-import PIL
 import pytorch_lightning as pl
 import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
-import copy
+from data import get_dataloaders
 from lit_utils import LitClassifier
 from utils import get_dataset, get_net, get_strategy
-from data import get_dataloaders
-from torch import nn
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +25,13 @@ def execute_active_learning(cfg: DictConfig):
     os.chdir(hydra.utils.get_original_cwd())
     name = osp.basename(out_dir)
     pl.seed_everything(cfg.seed)
+    wandb_group_id = os.getenv("WANDB_GROUP_ID")
 
     wandb.init(
         project=cfg.wandb.project,
         dir=out_dir,
         config=OmegaConf.to_container(cfg),
-        job_type=f"{cfg.dataset_name}_{cfg.strategy_name}",
+        job_type=f"{cfg.dataset_name}_{cfg.strategy_name}_{wandb_group_id}",
         name=name,
     )
     wandb_logger = WandbLogger(experimnet=wandb.run)
@@ -40,11 +39,9 @@ def execute_active_learning(cfg: DictConfig):
     logger.info(cfg)
 
     # Load dataset
-    dataset = get_dataset(cfg.dataset_name, cfg.data_dir)
-
-    # Architecture
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    dataset = get_dataset(cfg.dataset_name, cfg.data_dir, cfg.validation_set_size)
     net = get_net(cfg.dataset_name)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Sampling strategy
     strategy = get_strategy(cfg.strategy_name)
@@ -52,6 +49,7 @@ def execute_active_learning(cfg: DictConfig):
         strategy.unlabeled_batch_size = cfg.SingleLayerPnml.unlabeled_batch_size
         strategy.unlabeled_pool_size = cfg.SingleLayerPnml.unlabeled_pool_size
         strategy.test_set_size = cfg.SingleLayerPnml.test_set_size
+        strategy.parameter_lr = cfg.SingleLayerPnml.parameter_lr
 
     # Active learning
     dataset.initialize_labels(cfg.n_init_labeled)
@@ -59,30 +57,27 @@ def execute_active_learning(cfg: DictConfig):
         t1 = time.time()
 
         lit_h = LitClassifier(net, cfg, device)
-
         trainer = pl.Trainer(
-            max_epochs=cfg.epochs,
-            min_epochs=cfg.epochs,
-            gradient_clip_val=cfg.gradient_clip_val,
-            gradient_clip_algorithm="value",
+            max_epochs=cfg.max_epochs,
+            min_epochs=cfg.min_epochs,
             default_root_dir=out_dir,
             enable_checkpointing=False,
             gpus=1 if torch.cuda.is_available() else None,
             logger=wandb_logger,
             num_sanity_val_steps=0,
-            enable_progress_bar=rd == 0,
-            enable_model_summary=rd == 0,
-            callbacks=[pl.callbacks.LearningRateMonitor(),],
+            enable_progress_bar=False,
+            callbacks=[
+                EarlyStopping(
+                    monitor="acc/val", mode="max", patience=cfg.early_stopping_patience
+                )
+            ],
         )
 
         # Execute training
-        train_loader, test_loader = get_dataloaders(
-            dataset, cfg.batch_size, cfg.batch_size_test, last_train_size=50000,
-        )
-        trainer.fit(
-            lit_h, train_loader, val_dataloaders=test_loader if rd == 0 else None
-        )
+        train_loader, val_loader, _ = get_dataloaders(dataset, cfg.batch_size)
+        trainer.fit(lit_h, train_loader, val_loader)
         lit_h = lit_h.to(device)
+        lit_h = lit_h.eval()
 
         # Calculate performance
         training_labels = dataset.get_labeled_labels().cpu().numpy()
@@ -90,9 +85,13 @@ def execute_active_learning(cfg: DictConfig):
         test_acc = dataset.cal_test_acc(preds)
         test_loss = dataset.cal_test_loss(probs)
 
+        # Query and update labels
+        query_idxs = strategy.query(cfg.n_query, lit_h, dataset)
+        strategy.update(dataset, query_idxs)
+
         round_time = time.time() - t1
         logger.info(
-            f"[{rd}/{cfg.n_round-1}] Testing [acc loss]=[{test_acc:.3f} {test_loss:.2f}]. Train size={len(training_labels)}"
+            f"[{rd}/{cfg.n_round-1}] Testing acc={test_acc:.3f}. Train size={len(training_labels)} in {round_time:.2f} sec"
         )
 
         wandb.log(
@@ -103,20 +102,12 @@ def execute_active_learning(cfg: DictConfig):
                 "test_loss": test_loss,
                 "round_time_sec": round_time,
             }
-        )
-        wandb.log(
-            {
+            | {
                 f"label_{label}_ratio": (training_labels == label).sum()
                 / len(training_labels)
                 for label in np.arange(0, 10, 1)
             }
         )
-
-        # Query and update labels
-        t1 = time.time()
-        query_idxs = strategy.query(cfg.n_query, lit_h, dataset)
-        strategy.update(dataset, query_idxs)
-        logger.info(f"\t{cfg.strategy_name} query in {time.time()-t1:.2f} sec")
 
     logger.info(f"Finish in {time.time()-t0:.1f} sec")
 
