@@ -15,6 +15,7 @@ from query_strategies import (
     MarginSamplingDropout,
     RandomSampling,
     SingleLayerPnml,
+    DropoutPnml,
 )
 from query_strategies.strategy import Strategy
 
@@ -83,6 +84,8 @@ def get_strategy(name: str) -> Strategy:
         return AdversarialDeepFool()
     elif name == "SingleLayerPnml":
         return SingleLayerPnml()
+    elif name == "DropoutPnml":
+        return DropoutPnml()
     else:
         raise NotImplementedError
 

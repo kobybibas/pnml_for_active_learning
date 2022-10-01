@@ -50,6 +50,10 @@ def execute_active_learning(cfg: DictConfig):
         strategy.unlabeled_pool_size = cfg.SingleLayerPnml.unlabeled_pool_size
         strategy.test_set_size = cfg.SingleLayerPnml.test_set_size
         strategy.parameter_lr = cfg.SingleLayerPnml.parameter_lr
+    elif cfg.strategy_name == "DropoutPnml":
+        strategy.unlabeled_batch_size = cfg.DropoutPnml.unlabeled_batch_size
+        strategy.unlabeled_pool_size = cfg.DropoutPnml.unlabeled_pool_size
+        strategy.test_set_size = cfg.DropoutPnml.test_set_size
 
     # Active learning
     dataset.initialize_labels(cfg.n_init_labeled)

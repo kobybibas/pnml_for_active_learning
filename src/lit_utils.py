@@ -20,7 +20,7 @@ class LitClassifier(pl.LightningModule):
         super().__init__()
 
         self.cfg = cfg
-        self.clf = net()
+        self.clf = net(cfg)
 
         # Loss
         self.criterion = nn.CrossEntropyLoss()

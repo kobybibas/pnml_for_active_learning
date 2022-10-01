@@ -10,7 +10,7 @@ n_init_labeled: 250 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 400 # Number of rounds. Default 10
 dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
-strategy_name: SingleLayerPnml #  SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+strategy_name: DropoutPnml #  DropoutPnml SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
 SingleLayerPnml:
@@ -18,6 +18,13 @@ SingleLayerPnml:
   unlabeled_pool_size: 1024
   test_set_size: 1000
   parameter_lr: 1.0
+
+DropoutPnml:
+  unlabeled_batch_size: 256
+  test_batch_size: 512
+  unlabeled_pool_size: 1024
+  test_set_size: 1024
+  num_inferences: 8
 
 # Optimization
 max_epochs: 300
@@ -31,6 +38,7 @@ momentum: 0.9
 weight_decay: 1e-4
 early_stopping_patience: 4
 lr_scheduler_patience: 2
+dropout: 0.1
 
 # Model
 temperature: 1

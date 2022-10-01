@@ -1,0 +1,33 @@
+session_name: al_mnist_dropout_pnml
+windows:
+        - window_name: execute_all
+          # layout: tiled
+          shell_command_before:
+                  - cd ../src # run as a first command in all panes
+                  - conda activate pnml_for_active_learning
+                  - export WANDB_GROUP_ID=pNML_dropout_0.5
+          panes:
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 0
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=1 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 1
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=2 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 2
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=3 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 3
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=4 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 4
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=5 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10
+                  - shell_command:
+                            - echo $WANDB_GROUP_ID
+                            - sleep 5
+                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=6 n_init_labeled=100 n_round=350 n_query=1 dropout=0.05 DropoutPnml.num_inferences=10

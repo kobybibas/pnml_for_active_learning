@@ -8,15 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class MNIST_Net(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
         self.fc1 = nn.Linear(28 * 28, 50)
+        self.drop1 = nn.Dropout(cfg.dropout)
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x_in):
         z = x_in.view(-1, 28 * 28)
         e1 = F.leaky_relu(self.fc1(z))
-        y = self.fc2(e1)
+        y = self.fc2(self.drop1(e1))
         return y, e1
 
     def get_embedding_dim(self):
@@ -117,7 +118,7 @@ class BasicBlock(nn.Module):
 
 
 class CIFAR10_Net(nn.Module):
-    def __init__(self, block=BasicBlock, num_blocks=None, num_classes=10):
+    def __init__(self, cfg, block=BasicBlock, num_blocks=None, num_classes=10):
         if num_blocks is None:
             num_blocks = [2, 2, 2, 2]
         super(CIFAR10_Net, self).__init__()
@@ -158,6 +159,6 @@ class CIFAR10_Net(nn.Module):
         return self.linear
 
 
-def ResNet18():
-    return CIFAR10_Net(BasicBlock, [2, 2, 2, 2])
+def ResNet18(cfg):
+    return CIFAR10_Net(cfg, BasicBlock, [2, 2, 2, 2])
 
