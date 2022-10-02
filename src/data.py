@@ -157,12 +157,28 @@ def get_SVHN(handler, data_dir: str = "../data") -> Data:
     )
 
 
-def get_CIFAR10(handler, data_dir: str = "../data",) -> Data:
+def get_CIFAR10(
+    handler, data_dir: str = "../data", validation_set_size: int = 1024
+) -> Data:
 
     raw_train = datasets.CIFAR10(data_dir, train=True, download=True)
     raw_test = datasets.CIFAR10(data_dir, train=False, download=True)
+
+    train_data = raw_train.data[:-validation_set_size]
+    train_targets = raw_train.targets[:-validation_set_size]
+    val_data = raw_train.data[-validation_set_size:]
+    val_targets = raw_train.targets[-validation_set_size:]
+    test_data = raw_test.data
+    test_targets = raw_test.targets
+
     return Data(
-        raw_train.data, raw_train.targets, raw_test.data, raw_test.targets, handler,
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+        handler,
     )
 
 

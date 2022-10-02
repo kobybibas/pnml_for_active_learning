@@ -9,7 +9,7 @@ data_dir: ../data
 n_init_labeled: 250 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 400 # Number of rounds. Default 10
-dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+dataset_name: CIFAR10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
 strategy_name: DropoutPnml #  DropoutPnml SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
