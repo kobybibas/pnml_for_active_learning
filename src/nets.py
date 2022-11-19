@@ -10,18 +10,90 @@ logger = logging.getLogger(__name__)
 class MNIST_Net(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-        self.fc1 = nn.Linear(28 * 28, 50)
+        self.conv1 = nn.Conv2d(1, 32, 5)
         self.drop1 = nn.Dropout(cfg.dropout)
-        self.fc2 = nn.Linear(50, 10)
+        self.max_pool1 = nn.MaxPool2d(2)
+        self.relu1 = nn.ReLU()
+
+        self.conv2 = nn.Conv2d(32, 64, 5)
+        self.drop2 = nn.Dropout(cfg.dropout)
+        self.max_pool2 = nn.MaxPool2d(2)
+        self.relu2 = nn.ReLU()
+
+        self.fc1 = nn.Linear(1024, 128)
+        self.drop3 = nn.Dropout(cfg.dropout)
+        self.fc2 = nn.Linear(128, 10)
 
     def forward(self, x_in):
-        z = x_in.view(-1, 28 * 28)
-        e1 = F.leaky_relu(self.fc1(z))
-        y = self.fc2(self.drop1(e1))
+        x = self.conv1(x_in)
+        x = self.drop1(x)
+        x = self.max_pool1(x)
+        x = self.relu1(x)
+
+        x = self.conv2(x)
+        x = self.drop2(x)
+        x = self.max_pool2(x)
+        x = self.relu2(x)
+
+        x = x.view(-1, 1024)
+        x = self.fc1(x)
+        e1 = self.drop3(x)
+        y = self.fc2(e1)
         return y, e1
 
     def get_embedding_dim(self):
-        return 50
+        return 128
+
+    def get_classifer(self):
+        return self.fc2
+
+
+class EMNIST_Net(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3)
+        self.drop1 = nn.Dropout(cfg.dropout)
+        self.max_pool1 = nn.MaxPool2d(2)
+        self.relu1 = nn.ReLU()
+
+        self.conv2 = nn.Conv2d(32, 64, 3)
+        self.drop2 = nn.Dropout(cfg.dropout)
+        self.max_pool2 = nn.MaxPool2d(2)
+        self.relu2 = nn.ReLU()
+
+        self.conv3 = nn.Conv2d(64, 128, 3)
+        self.drop3 = nn.Dropout(cfg.dropout)
+        self.max_pool3 = nn.MaxPool2d(2)
+        self.relu3 = nn.ReLU()
+
+        self.fc1 = nn.Linear(128, 512)
+        self.drop4 = nn.Dropout(cfg.dropout)
+        self.fc2 = nn.Linear(512, 47)
+
+    def forward(self, x_in):
+        x = self.conv1(x_in)
+        x = self.drop1(x)
+        x = self.max_pool1(x)
+        x = self.relu1(x)
+
+        x = self.conv2(x)
+        x = self.drop2(x)
+        x = self.max_pool2(x)
+        x = self.relu2(x)
+
+        x = self.conv3(x)
+        x = self.drop3(x)
+        x = self.max_pool3(x)
+        x = self.relu3(x)
+
+        x = x.view(-1, 128)
+        x = self.fc1(x)
+        e1 = self.drop4(x)
+        y = self.fc2(e1)
+        return y, e1
+
+    def get_embedding_dim(self):
+        return 47
 
     def get_classifer(self):
         return self.fc2
@@ -169,4 +241,3 @@ class CIFAR10_Net(nn.Module):
 
 def ResNet18(cfg):
     return CIFAR10_Net(cfg, BasicBlock, [2, 2, 2, 2])
-

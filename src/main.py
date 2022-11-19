@@ -44,16 +44,14 @@ def execute_active_learning(cfg: DictConfig):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Sampling strategy
-    strategy = get_strategy(cfg.strategy_name)
-    if cfg.strategy_name == "SingleLayerPnml":
-        strategy.unlabeled_batch_size = cfg.SingleLayerPnml.unlabeled_batch_size
-        strategy.unlabeled_pool_size = cfg.SingleLayerPnml.unlabeled_pool_size
-        strategy.test_set_size = cfg.SingleLayerPnml.test_set_size
-        strategy.parameter_lr = cfg.SingleLayerPnml.parameter_lr
-    elif cfg.strategy_name == "DropoutPnml":
-        strategy.unlabeled_batch_size = cfg.DropoutPnml.unlabeled_batch_size
-        strategy.unlabeled_pool_size = cfg.DropoutPnml.unlabeled_pool_size
-        strategy.test_set_size = cfg.DropoutPnml.test_set_size
+    strategy = get_strategy(
+        cfg.strategy_name,
+        n_drop=cfg.n_drop,
+        unlabeled_batch_size=cfg.unlabeled_batch_size,
+        unlabeled_pool_size=cfg.unlabeled_pool_size,
+        test_batch_size=cfg.test_batch_size,
+        test_set_size=cfg.test_set_size,
+    )
 
     # Active learning
     dataset.initialize_labels(cfg.n_init_labeled)
@@ -70,6 +68,7 @@ def execute_active_learning(cfg: DictConfig):
             logger=wandb_logger,
             num_sanity_val_steps=0,
             enable_progress_bar=False,
+            precision=cfg.precision,
             callbacks=[
                 EarlyStopping(
                     monitor="acc/val", mode="max", patience=cfg.early_stopping_patience
@@ -80,7 +79,7 @@ def execute_active_learning(cfg: DictConfig):
         # Execute training
         train_loader, val_loader, _ = get_dataloaders(dataset, cfg.batch_size)
         trainer.fit(lit_h, train_loader, val_loader)
-        lit_h = lit_h.to(device)
+        lit_h = lit_h.to(device).float()
         lit_h = lit_h.eval()
 
         # Calculate performance

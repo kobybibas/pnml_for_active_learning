@@ -15,13 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 class DropoutPnml(Strategy):
-    def __init__(self):
+    def __init__(
+        self,
+        n_drop: int = 10,
+        unlabeled_batch_size=256,
+        unlabeled_pool_size=256,
+        test_batch_size=256,
+        test_set_size: int = 512,
+    ):
         self.eps = 1e-6
-        self.unlabeled_batch_size = 256
-        self.test_batch_size = 220
-        self.unlabeled_pool_size = 256
-        self.test_set_size = 512
-        self.num_inferences = 8
+        self.n_drop = n_drop
+        self.unlabeled_batch_size = unlabeled_batch_size
+        self.unlabeled_pool_size = unlabeled_pool_size
+        self.test_batch_size = test_batch_size
+        self.test_set_size = test_set_size
 
     def model_inference(self, net, x_candidates, x_test):
         num_candidates, num_test = len(x_candidates), len(x_test)
@@ -73,7 +80,7 @@ class DropoutPnml(Strategy):
             regrets = []
             for x_test, _, _ in test_loader:
                 model_scores, model_probs_test = [], []
-                for _ in range(self.num_inferences):
+                for _ in range(self.n_drop):
                     num_candidates, num_test = len(x_candidates), len(x_test)
                     probs_test, scores = self.model_inference(net, x_candidates, x_test)
                     num_labels = probs_test.size(1)

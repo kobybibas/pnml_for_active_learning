@@ -54,7 +54,9 @@ class LitClassifier(pl.LightningModule):
             weight_decay=self.cfg.weight_decay,
         )
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, "min", patience=self.cfg.lr_scheduler_patience,
+            optimizer,
+            "min",
+            patience=self.cfg.lr_scheduler_patience,
         )
 
         return {
@@ -117,7 +119,6 @@ class LitClassifier(pl.LightningModule):
                     out, e1 = self.clf(x)
                     prob = F.softmax(out, dim=1)
                     probs.append(prob.cpu())
-                    # probs[i][idxs] += F.softmax(out, dim=1).cpu()
             probs_drop.append(torch.vstack(probs).unsqueeze(0))
         probs_drop = torch.vstack(probs_drop).float()
         return probs_drop

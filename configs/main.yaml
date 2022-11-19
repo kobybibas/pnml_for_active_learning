@@ -6,39 +6,34 @@ defaults:
 seed: 1234
 data_dir: ../data
 
-n_init_labeled: 250 # Number of init labeled samples. Default 10000
+n_init_labeled: 20 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
-n_round: 400 # Number of rounds. Default 10
-dataset_name: CIFAR10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
-strategy_name: DropoutPnml #  DropoutPnml SingleLayerPnml,  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+n_round: 300 # Number of rounds. Default 10
+dataset_name: EMNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+strategy_name: DropoutPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
-SingleLayerPnml:
-  unlabeled_batch_size: 128
-  unlabeled_pool_size: 1024
-  test_set_size: 1000
-  parameter_lr: 1.0
-
-DropoutPnml:
-  unlabeled_batch_size: 256
-  test_batch_size: 512
-  unlabeled_pool_size: 1024
-  test_set_size: 1024
-  num_inferences: 8
+# Active learning inference
+n_drop: 100
+unlabeled_batch_size: 256
+unlabeled_pool_size: 1024
+test_batch_size: 512
+test_set_size: 1024
 
 # Optimization
 max_epochs: 300
-min_epochs: 10
+min_epochs: 1
 batch_size: 64
-batch_size_test: 128
+batch_size_test: 512
 gradient_clip_val: 1.0
 num_workers: 0
-lr: 0.01
+lr: 0.001
 momentum: 0.9
 weight_decay: 1e-4
-early_stopping_patience: 4
+early_stopping_patience: 3
 lr_scheduler_patience: 2
-dropout: 0.1
+dropout: 0.5
+precision: 32
 
 # Model
 temperature: 1
