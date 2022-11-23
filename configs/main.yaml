@@ -14,10 +14,10 @@ strategy_name: DropoutPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling
 validation_set_size: 1024
 
 # Active learning inference
-n_drop: 100
+n_drop: 10
 unlabeled_batch_size: 256
 unlabeled_pool_size: 1024
-test_batch_size: 512
+test_batch_size: 256
 test_set_size: 1024
 
 # Optimization
