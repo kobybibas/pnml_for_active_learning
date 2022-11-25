@@ -136,35 +136,3 @@ class LitClassifier(pl.LightningModule):
                 _, e1 = self.clf(x)
                 embeddings.append(e1)
         return torch.vstack(embeddings)
-
-    def get_emb_logit_prob(
-        self, data
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        self.clf.eval()
-        loader = DataLoader(
-            data, shuffle=False, batch_size=self.cfg.batch_size_test, num_workers=0
-        )
-        clf_last_layer = self.clf.get_classifer()
-        embeddings, logits, probs = [], [], []
-        with torch.no_grad():
-            for x, _, _ in loader:
-                x = x.to(self.device_)
-                out, e1 = self.clf(x)
-
-                # Normalize
-                if self.cfg.is_norm_features:
-                    norm = torch.linalg.norm(e1, dim=-1, keepdim=True)
-                    e1 = e1 / norm
-                    # Forward with feature normalization
-                    out = clf_last_layer(e1)
-
-                if self.cfg.temperature > 1.0:
-                    e1 = e1 / self.cfg.temperature
-                    # Forward with feature normalization
-                    out = clf_last_layer(e1)
-
-                embeddings.append(e1)
-                logits.append(out)
-                prob = F.softmax(out, dim=1)
-                probs.append(prob)
-        return torch.vstack(embeddings), torch.vstack(logits), torch.vstack(probs)

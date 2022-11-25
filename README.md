@@ -72,4 +72,14 @@ If you use our code in your research or applications, please consider citing our
 
 
 
+# New
+cinic data follows: https://github.com/AntonFriberg/pytorch-cinic-10
+```
+mkdir -p data/cinic-10
+curl -L \
+  https://datashare.is.ed.ac.uk/bitstream/handle/10283/3192/CINIC-10.tar.gz \
+  | tar xz -C data/cinic-10
+```
+
+
 

@@ -1,10 +1,12 @@
 import logging
 import time
+from os.path import join as osj
 from typing import Tuple
 
 import numpy as np
 import torch
 from torch.nn.functional import cross_entropy
+from torch.utils import data as data
 from torch.utils.data import (
     DataLoader,
     Dataset,
@@ -12,7 +14,7 @@ from torch.utils.data import (
     TensorDataset,
     WeightedRandomSampler,
 )
-from torchvision import datasets
+from torchvision import datasets, transforms
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
@@ -215,6 +217,72 @@ def get_CIFAR10(
     )
 
 
+def get_CINIC10(
+    handler,
+    data_dir: str = "../data",
+    train_set_size: int = 10000,  # TODO 160K
+    val_set_size: int = 1000,  # TODO 20K
+    test_set_size: int = 10000,  # TODO 90K
+) -> Data:
+
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.47889522, 0.47227842, 0.43047404],
+                std=[0.24205776, 0.23828046, 0.25874835],
+            ),
+        ]
+    )
+
+    train_set = datasets.ImageFolder(
+        root=osj(data_dir, "cinic-10", "train"), transform=transform
+    )
+    val_set = datasets.ImageFolder(
+        root=osj(data_dir, "cinic-10", "valid"), transform=transform
+    )
+    test_set = datasets.ImageFolder(
+        root=osj(data_dir, "cinic-10", "test"), transform=transform
+    )
+
+    indices = torch.randperm(len(test_set))[:train_set_size]
+    train_data, train_targets = [], []
+    for idx in tqdm(indices):
+        img, label = train_set[idx]
+        train_data.append(img)
+        train_targets.append(label)
+    train_data = torch.stack(train_data)
+    train_targets = torch.tensor(train_targets)
+
+    indices = torch.randperm(len(val_set))[:val_set_size]
+    val_data, val_targets = [], []
+    for idx in tqdm(indices):
+        img, label = val_set[idx]
+        val_data.append(img)
+        val_targets.append(label)
+    val_data = torch.stack(val_data)
+    val_targets = torch.tensor(val_targets)
+
+    indices = torch.randperm(len(test_set))[:test_set_size]
+    test_data, test_targets = [], []
+    for idx in indices:
+        img, label = test_set[idx]
+        test_data.append(img)
+        test_targets.append(label)
+    test_data = torch.stack(test_data)
+    test_targets = torch.tensor(test_targets)
+
+    return Data(
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+        handler,
+    )
+
+
 def get_dataloaders(
     dataset, batch_size: int
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
@@ -264,10 +332,6 @@ def get_dataloaders(
         num_workers=0,
     )
     return train_loader, val_loader, test_loader
-
-
-import torch
-from torch.utils import data as data
 
 
 class RandomFixedLengthSampler(data.Sampler):

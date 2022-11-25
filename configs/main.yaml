@@ -9,7 +9,7 @@ data_dir: ../data
 n_init_labeled: 20 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 300 # Number of rounds. Default 10
-dataset_name: EMNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10"
+dataset_name: CINIC10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
 strategy_name: DropoutPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
@@ -34,10 +34,6 @@ early_stopping_patience: 3
 lr_scheduler_patience: 2
 dropout: 0.5
 precision: 32
-
-# Model
-temperature: 1
-is_norm_features: true
 
 hydra:
   job:

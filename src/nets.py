@@ -3,6 +3,8 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models import vgg16
+import types
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +239,35 @@ class CIFAR10_Net(nn.Module):
 
     def get_classifer(self):
         return self.linear
+
+
+def CINIC10_Net(cfg):
+    vgg_handle = vgg16(pretrained=True, progress=True)
+
+    def forward_with_dropout(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = self.avgpool(x)
+        e = torch.flatten(x, 1)
+        y = self.classifier(e)
+        return y, e
+
+    num_classes = 10
+    classifier = nn.Sequential(
+        nn.Linear(512 * 7 * 7, 4096),
+        nn.ReLU(True),
+        nn.Dropout(p=cfg.dropout),
+        nn.Linear(4096, 512),
+        nn.ReLU(True),
+        nn.Dropout(p=cfg.dropout),
+        nn.Linear(512, num_classes),
+    )
+    vgg_handle.classifier = classifier
+    vgg_handle.forward = types.MethodType(forward_with_dropout, vgg_handle)
+    vgg_handle.get_embedding_dim = types.MethodType(lambda self: 512, vgg_handle)
+    vgg_handle.get_classifer = types.MethodType(
+        lambda self: self.classifier, vgg_handle
+    )
+    return vgg_handle
 
 
 def ResNet18(cfg):

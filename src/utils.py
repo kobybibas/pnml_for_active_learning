@@ -1,6 +1,13 @@
-from data import get_CIFAR10, get_EMNIST, get_FashionMNIST, get_MNIST, get_SVHN
-from handlers import CIFAR10_Handler, MNIST_Handler, SVHN_Handler
-from nets import CIFAR10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
+from data import (
+    get_CIFAR10,
+    get_CINIC10,
+    get_EMNIST,
+    get_FashionMNIST,
+    get_MNIST,
+    get_SVHN,
+)
+from handlers import CIFAR10_Handler, CINIC10_Handler, MNIST_Handler, SVHN_Handler
+from nets import CIFAR10_Net, CINIC10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
 from query_strategies import (
     AdversarialBIM,
     AdversarialDeepFool,
@@ -30,6 +37,8 @@ def get_handler(name):
         return SVHN_Handler
     elif name == "CIFAR10":
         return CIFAR10_Handler
+    elif name == "CINIC10":
+        return CINIC10_Handler
 
 
 def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int = 1024):
@@ -43,6 +52,8 @@ def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int =
         return get_SVHN(get_handler(name), data_dir)
     elif name == "CIFAR10":
         return get_CIFAR10(get_handler(name), data_dir)
+    elif name == "CINIC10":
+        return get_CINIC10(get_handler(name), data_dir)
     else:
         raise NotImplementedError
 
@@ -58,6 +69,8 @@ def get_net(name):
         return SVHN_Net
     elif name == "CIFAR10":
         return CIFAR10_Net
+    elif name == "CINIC10":
+        return CINIC10_Net
     else:
         raise NotImplementedError
 
