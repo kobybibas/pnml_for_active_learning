@@ -118,6 +118,15 @@ def get_strategy(
             test_batch_size=test_batch_size,
             test_set_size=test_set_size,
         )
+    elif name == "SwaPnml":
+        return DropoutPnml(
+            n_drop=1,
+            unlabeled_batch_size=unlabeled_batch_size,
+            unlabeled_pool_size=unlabeled_pool_size,
+            test_batch_size=test_batch_size,
+            test_set_size=test_set_size,
+        )
+
     else:
         raise NotImplementedError
 

@@ -9,8 +9,9 @@ import pytorch_lightning as pl
 import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, StochasticWeightAveraging
 from pytorch_lightning.loggers import WandbLogger
+
 from data import get_dataloaders
 from lit_utils import LitClassifier
 from utils import get_dataset, get_net, get_strategy
@@ -71,7 +72,9 @@ def execute_active_learning(cfg: DictConfig):
             precision=cfg.precision,
             callbacks=[
                 EarlyStopping(
-                    monitor="acc/val", mode="max", patience=cfg.early_stopping_patience
+                    monitor="acc/val",
+                    mode="max",
+                    patience=cfg.early_stopping_patience,
                 )
             ],
         )
@@ -79,6 +82,24 @@ def execute_active_learning(cfg: DictConfig):
         # Execute training
         train_loader, val_loader, _ = get_dataloaders(dataset, cfg.batch_size)
         trainer.fit(lit_h, train_loader, val_loader)
+
+        if cfg.strategy_name == "SwaPnml":
+            # Extra traiing ecpochs for SWA
+            logger.info("SwaPnml training")
+            trainer = pl.Trainer(
+                max_epochs=cfg.max_epochs,
+                min_epochs=cfg.min_epochs,
+                default_root_dir=out_dir,
+                enable_checkpointing=False,
+                gpus=1 if torch.cuda.is_available() else None,
+                logger=wandb_logger,
+                num_sanity_val_steps=0,
+                enable_progress_bar=False,
+                precision=cfg.precision,
+                callbacks=[StochasticWeightAveraging(swa_epoch_start=0.0)],
+            )
+            trainer.fit(lit_h, train_loader, val_loader)
+
         lit_h = lit_h.to(device).float()
         lit_h = lit_h.eval()
 

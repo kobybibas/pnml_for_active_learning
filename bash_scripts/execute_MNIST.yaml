@@ -8,31 +8,31 @@ windows:
           panes:
                   - shell_command:
                             - sleep 0
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 1
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 2
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 3
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 4
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 5
-                            #     - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
