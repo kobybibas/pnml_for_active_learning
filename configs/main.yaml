@@ -9,12 +9,12 @@ data_dir: ../data
 n_init_labeled: 20 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 300 # Number of rounds. Default 10
-dataset_name: CINIC10 # "MNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
-strategy_name: DropoutPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+dataset_name: MNIST # "MNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
+strategy_name: SwaPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
 # Active learning inference
-n_drop: 10
+n_drop: 0 # 10
 unlabeled_batch_size: 256
 unlabeled_pool_size: 1024
 test_batch_size: 256
@@ -30,7 +30,7 @@ num_workers: 0
 lr: 0.001
 momentum: 0.9
 weight_decay: 1e-4
-early_stopping_patience: 5
+early_stopping_patience: 6
 lr_scheduler_patience: 3
 dropout: 0.5
 precision: 32

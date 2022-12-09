@@ -4,13 +4,23 @@ windows:
           shell_command_before:
                   - cd ../src
                   - conda activate pnml_for_active_learning
-                  - export WANDB_GROUP_ID=BASELINE
+                  - export WANDB_GROUP_ID=DROPOUT_10
           panes:
                   - shell_command:
                             - sleep 0
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=0 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5
+                  - shell_command:
+                            - sleep 1
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=1 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5
+                  - shell_command:
+                            - sleep 2
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=2 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5
+                  - shell_command:
+                            - sleep 3
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=3 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5
+                  - shell_command:
+                            - sleep 4
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=4 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5
+                  - shell_command:
+                            - sleep 5
+                            - python main.py dataset_name=MNIST strategy_name=SwaPnml seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64 dropout=0.5

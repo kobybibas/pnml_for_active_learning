@@ -55,7 +55,7 @@ class LitClassifier(pl.LightningModule):
         )
         lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            "min",
+            "max",
             patience=self.cfg.lr_scheduler_patience,
         )
 
@@ -65,7 +65,7 @@ class LitClassifier(pl.LightningModule):
                 "scheduler": lr_scheduler,
                 "interval": "epoch",
                 "frequency": 1,
-                "monitor": "loss/val",
+                "monitor": "acc/val",
                 "strict": True,
                 "name": None,
             },

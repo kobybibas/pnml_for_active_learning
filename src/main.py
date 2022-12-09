@@ -9,7 +9,11 @@ import pytorch_lightning as pl
 import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import EarlyStopping, StochasticWeightAveraging
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    StochasticWeightAveraging,
+    LearningRateMonitor,
+)
 from pytorch_lightning.loggers import WandbLogger
 
 from data import get_dataloaders
@@ -17,6 +21,47 @@ from lit_utils import LitClassifier
 from utils import get_dataset, get_net, get_strategy
 
 logger = logging.getLogger(__name__)
+
+
+def initalize_trainer(
+    cfg: DictConfig,
+    wandb_logger,
+    enable_progress_bar: bool = False,
+    is_lr_monitor: bool = False,
+    is_swa: bool = False,
+    out_dir: str = None,
+):
+    callbacks = []
+    if is_swa is False:
+        callbacks.append(
+            EarlyStopping(
+                monitor="acc/val",
+                mode="max",
+                patience=cfg.early_stopping_patience,
+            )
+        )
+    if is_swa:
+        callbacks.append(
+            StochasticWeightAveraging(
+                swa_epoch_start=0.0, annealing_epochs=5, swa_lrs=cfg.lr
+            )
+        )
+    if is_lr_monitor:
+        callbacks.append(LearningRateMonitor(logging_interval="step"))
+
+    trainer = pl.Trainer(
+        max_epochs=cfg.max_epochs if is_swa is False else 10,
+        min_epochs=cfg.min_epochs if is_swa is False else 10,
+        default_root_dir=out_dir,
+        enable_checkpointing=False,
+        gpus=1 if torch.cuda.is_available() else None,
+        logger=wandb_logger,
+        num_sanity_val_steps=0,
+        enable_progress_bar=enable_progress_bar,
+        log_every_n_steps=1 if enable_progress_bar else 100,
+        callbacks=callbacks,
+    )
+    return trainer
 
 
 @hydra.main(version_base="1.2", config_path="../configs/", config_name="main")
@@ -60,23 +105,13 @@ def execute_active_learning(cfg: DictConfig):
         t1 = time.time()
 
         lit_h = LitClassifier(net, cfg, device)
-        trainer = pl.Trainer(
-            max_epochs=cfg.max_epochs,
-            min_epochs=cfg.min_epochs,
-            default_root_dir=out_dir,
-            enable_checkpointing=False,
-            gpus=1 if torch.cuda.is_available() else None,
-            logger=wandb_logger,
-            num_sanity_val_steps=0,
-            enable_progress_bar=False,
-            precision=cfg.precision,
-            callbacks=[
-                EarlyStopping(
-                    monitor="acc/val",
-                    mode="max",
-                    patience=cfg.early_stopping_patience,
-                )
-            ],
+        trainer = initalize_trainer(
+            cfg,
+            wandb_logger,
+            enable_progress_bar=rd == 0,
+            is_lr_monitor=rd == 0,
+            is_swa=False,
+            out_dir=out_dir,
         )
 
         # Execute training
@@ -84,19 +119,15 @@ def execute_active_learning(cfg: DictConfig):
         trainer.fit(lit_h, train_loader, val_loader)
 
         if cfg.strategy_name == "SwaPnml":
-            # Extra traiing ecpochs for SWA
             logger.info("SwaPnml training")
-            trainer = pl.Trainer(
-                max_epochs=cfg.max_epochs,
-                min_epochs=cfg.min_epochs,
-                default_root_dir=out_dir,
-                enable_checkpointing=False,
-                gpus=1 if torch.cuda.is_available() else None,
-                logger=wandb_logger,
-                num_sanity_val_steps=0,
-                enable_progress_bar=False,
-                precision=cfg.precision,
-                callbacks=[StochasticWeightAveraging(swa_epoch_start=0.0)],
+            # Extra training epochs for SWA
+            trainer = initalize_trainer(
+                cfg,
+                wandb_logger,
+                enable_progress_bar=rd == 0,
+                is_lr_monitor=rd == 0,
+                is_swa=True,
+                out_dir=out_dir,
             )
             trainer.fit(lit_h, train_loader, val_loader)
 

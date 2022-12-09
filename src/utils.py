@@ -120,7 +120,7 @@ def get_strategy(
         )
     elif name == "SwaPnml":
         return DropoutPnml(
-            n_drop=1,
+            n_drop=n_drop,
             unlabeled_batch_size=unlabeled_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
             test_batch_size=test_batch_size,
