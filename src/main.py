@@ -13,6 +13,7 @@ from pytorch_lightning.callbacks import (
     EarlyStopping,
     StochasticWeightAveraging,
     LearningRateMonitor,
+    ModelCheckpoint,
 )
 from pytorch_lightning.loggers import WandbLogger
 
@@ -31,29 +32,33 @@ def initalize_trainer(
     is_swa: bool = False,
     out_dir: str = None,
 ):
-    callbacks = []
-    if is_swa is False:
-        callbacks.append(
-            EarlyStopping(
-                monitor="acc/val",
-                mode="max",
-                patience=cfg.early_stopping_patience,
-            )
+    callbacks = [
+        EarlyStopping(
+            monitor="loss/val",  # "acc/val",
+            mode="min",  # max
+            patience=cfg.early_stopping_patience,
         )
+    ]
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=out_dir, save_top_k=1, monitor="loss/val", mode="min"
+    )
+    callbacks.append(checkpoint_callback)
     if is_swa:
         callbacks.append(
             StochasticWeightAveraging(
-                swa_epoch_start=0.0, annealing_epochs=5, swa_lrs=cfg.lr
+                swa_epoch_start=cfg.swa_epoch_start,
+                annealing_epochs=cfg.swa_annealing_epochs,
+                swa_lrs=cfg.swa_lr,
             )
         )
     if is_lr_monitor:
         callbacks.append(LearningRateMonitor(logging_interval="step"))
 
     trainer = pl.Trainer(
-        max_epochs=cfg.max_epochs if is_swa is False else 10,
-        min_epochs=cfg.min_epochs if is_swa is False else 10,
+        max_epochs=cfg.max_epochs,
+        min_epochs=cfg.min_epochs if is_swa is False else cfg.swa_epoch_start,
         default_root_dir=out_dir,
-        enable_checkpointing=False,
+        enable_checkpointing=True,
         gpus=1 if torch.cuda.is_available() else None,
         logger=wandb_logger,
         num_sanity_val_steps=0,
@@ -61,7 +66,7 @@ def initalize_trainer(
         log_every_n_steps=1 if enable_progress_bar else 100,
         callbacks=callbacks,
     )
-    return trainer
+    return trainer, checkpoint_callback
 
 
 @hydra.main(version_base="1.2", config_path="../configs/", config_name="main")
@@ -104,33 +109,21 @@ def execute_active_learning(cfg: DictConfig):
     for rd in range(cfg.n_round):
         t1 = time.time()
 
+        is_debug = rd == 0
         lit_h = LitClassifier(net, cfg, device)
-        trainer = initalize_trainer(
+        trainer, checkpoint_callback = initalize_trainer(
             cfg,
             wandb_logger,
-            enable_progress_bar=rd == 0,
-            is_lr_monitor=rd == 0,
-            is_swa=False,
+            enable_progress_bar=is_debug,
+            is_lr_monitor=is_debug,
+            is_swa=cfg.strategy_name == "SwaPnml",
             out_dir=out_dir,
         )
 
         # Execute training
         train_loader, val_loader, _ = get_dataloaders(dataset, cfg.batch_size)
         trainer.fit(lit_h, train_loader, val_loader)
-
-        if cfg.strategy_name == "SwaPnml":
-            logger.info("SwaPnml training")
-            # Extra training epochs for SWA
-            trainer = initalize_trainer(
-                cfg,
-                wandb_logger,
-                enable_progress_bar=rd == 0,
-                is_lr_monitor=rd == 0,
-                is_swa=True,
-                out_dir=out_dir,
-            )
-            trainer.fit(lit_h, train_loader, val_loader)
-
+        lit_h = LitClassifier.load_from_checkpoint(checkpoint_callback.best_model_path)
         lit_h = lit_h.to(device).float()
         lit_h = lit_h.eval()
 

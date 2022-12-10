@@ -34,6 +34,8 @@ class DropoutPnml(Strategy):
         num_candidates, num_test = len(x_candidates), len(x_test)
 
         # Inference
+        device = net.device
+        x_candidates, x_test = x_candidates.to(device), x_test.to(device)
         preds, _ = net(torch.vstack((x_candidates, x_test)))
         num_labels = preds.size(1)
         probs = torch.softmax(preds, -1)
@@ -76,7 +78,9 @@ class DropoutPnml(Strategy):
         # Inference
         net.train()
         mean_regrets, idx_candidates = [], []
-        for x_candidates, _, idx_candidates_batch in candidate_loader:
+        for x_candidates, _, idx_candidates_batch in tqdm(
+            candidate_loader, desc="DropoutPnml candidates"
+        ):
             regrets = []
             for x_test, _, _ in test_loader:
                 model_scores, model_probs_test = [], []
@@ -127,10 +131,12 @@ class DropoutPnml(Strategy):
         min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
 
         wandb.log(
-            {"regret_of_chosen": min_x_regret, "max_yn_value": max_y_idx,}
+            {
+                "regret_of_chosen": min_x_regret[0].item(),
+                "max_yn_value": max_y_idx[0].item(),
+                "max_yn_mean_value": max_y_idx.float().mean().item(),
+            }
         )
 
         torch.set_grad_enabled(True)
-
         return idx_candidates[min_x_idx[:n]]
-

@@ -314,8 +314,7 @@ def get_dataloaders(
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        # sampler=RandomFixedLengthSampler(train_dataset, 5056),
-        sampler=RandomFixedLengthSampler(train_dataset, 512),
+        sampler=RandomFixedLengthSampler(train_dataset, 5056),
         batch_size=batch_size,
         num_workers=0,
     )  # Align with https://github.com/BlackHC/BatchBALD/blob/3cb37e9a8b433603fc267c0f1ef6ea3b202cfcb0/src/run_experiment.py#L205

@@ -53,22 +53,17 @@ class LitClassifier(pl.LightningModule):
             lr=self.cfg.lr,
             weight_decay=self.cfg.weight_decay,
         )
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            "max",
-            patience=self.cfg.lr_scheduler_patience,
-        )
 
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode="min",
+            factor=0.1,
+            patience=self.cfg.reduce_on_plature_patience,
+        )
         return {
             "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": lr_scheduler,
-                "interval": "epoch",
-                "frequency": 1,
-                "monitor": "acc/val",
-                "strict": True,
-                "name": None,
-            },
+            "lr_scheduler": scheduler,
+            "monitor": "loss/val",
         }
 
     def predict(self, data):
