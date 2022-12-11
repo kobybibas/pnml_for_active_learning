@@ -15,6 +15,7 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
 )
+from glob import glob
 from pytorch_lightning.loggers import WandbLogger
 
 from data import get_dataloaders
@@ -40,7 +41,11 @@ def initalize_trainer(
         )
     ]
     checkpoint_callback = ModelCheckpoint(
-        dirpath=out_dir, save_top_k=1, monitor="loss/val", mode="min"
+        dirpath=out_dir,
+        save_top_k=1,
+        monitor="loss/val",
+        mode="min",
+        filename="best.pth",
     )
     callbacks.append(checkpoint_callback)
     if is_swa:
@@ -124,6 +129,7 @@ def execute_active_learning(cfg: DictConfig):
         train_loader, val_loader, _ = get_dataloaders(dataset, cfg.batch_size)
         trainer.fit(lit_h, train_loader, val_loader)
         lit_h = LitClassifier.load_from_checkpoint(checkpoint_callback.best_model_path)
+        [os.remove(file) for file in glob(f"{out_dir}/*.ckpt")]
         lit_h = lit_h.to(device).float()
         lit_h = lit_h.eval()
 
