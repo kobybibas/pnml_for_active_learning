@@ -16,6 +16,7 @@ from torch.utils.data import (
 )
 from torchvision import datasets, transforms
 from tqdm import tqdm
+import skimage as sk
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,67 @@ def get_MNIST(
     val_targets = raw_train.targets[-validation_set_size:]
     test_data = raw_test.data
     test_targets = raw_test.targets
+
+    return Data(
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+        handler,
+    )
+
+
+def impulse_noise(x, severity=4):
+    c = [0.03, 0.06, 0.09, 0.17, 0.27][severity - 1]
+
+    x = sk.util.random_noise(np.array(x) / 255.0, mode="s&p", amount=c)
+    x = np.clip(x, 0, 1) * 255
+    return x.astype(np.float32)
+
+
+def get_MNIST_C(
+    handler, data_dir: str = "../data", validation_set_size: int = 1024
+) -> Data:
+    raw_train = datasets.MNIST(
+        data_dir,
+        train=True,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.Lambda(lambda x: impulse_noise(x, severity=4)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+    raw_test = datasets.MNIST(
+        data_dir,
+        train=False,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.Lambda(lambda x: impulse_noise(x, severity=4)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+    train_data, train_targets = [], []
+    for x, y in raw_train:
+        train_data.append(x)
+        train_targets.append(y)
+    val_data = torch.vstack(train_data[-validation_set_size:])
+    val_targets = train_targets[-validation_set_size:]
+    train_data = torch.vstack(train_data[:-validation_set_size])
+    train_targets = train_targets[:-validation_set_size]
+
+    test_data, test_targets = [], []
+    for x, y in raw_test:
+        test_data.append(x)
+        test_targets.append(y)
+    test_data = torch.vstack(test_data)
 
     return Data(
         train_data,

@@ -5,6 +5,7 @@ from data import (
     get_FashionMNIST,
     get_MNIST,
     get_SVHN,
+    get_MNIST_C,
 )
 from handlers import CIFAR10_Handler, CINIC10_Handler, MNIST_Handler, SVHN_Handler
 from nets import CIFAR10_Net, CINIC10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
@@ -29,6 +30,8 @@ from query_strategies.strategy import Strategy
 def get_handler(name):
     if name == "MNIST":
         return MNIST_Handler
+    elif name == "MNIST_C":
+        return MNIST_Handler
     elif name == "EMNIST":
         return MNIST_Handler
     elif name == "FashionMNIST":
@@ -44,6 +47,8 @@ def get_handler(name):
 def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int = 1024):
     if name == "MNIST":
         return get_MNIST(get_handler(name), data_dir, validation_set_size)
+    elif name == "MNIST_C":
+        return get_MNIST_C(get_handler(name), data_dir, validation_set_size)
     elif name == "EMNIST":
         return get_EMNIST(get_handler(name), data_dir, validation_set_size)
     elif name == "FashionMNIST":
@@ -60,6 +65,8 @@ def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int =
 
 def get_net(name):
     if name == "MNIST":
+        return MNIST_Net
+    elif name == "MNIST_C":
         return MNIST_Net
     elif name == "EMNIST":
         return EMNIST_Net
