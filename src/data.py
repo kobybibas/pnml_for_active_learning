@@ -145,6 +145,18 @@ def get_MNIST(
     )
 
 
+def identity(x):
+    return np.array(x, dtype=np.float32)
+
+
+def shot_noise(x, severity=5):
+    c = [60, 25, 12, 5, 3][severity - 1]
+
+    x = np.array(x) / 255.0
+    x = np.clip(np.random.poisson(x * c) / float(c), 0, 1) * 255
+    return x.astype(np.float32)
+
+
 def impulse_noise(x, severity=4):
     c = [0.03, 0.06, 0.09, 0.17, 0.27][severity - 1]
 
@@ -162,7 +174,7 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.Lambda(lambda x: impulse_noise(x, severity=4)),
+                transforms.Lambda(lambda x: identity(x)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
@@ -174,7 +186,7 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.Lambda(lambda x: impulse_noise(x, severity=4)),
+                transforms.Lambda(lambda x: shot_noise(x, severity=2)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
