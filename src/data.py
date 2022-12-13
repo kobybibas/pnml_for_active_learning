@@ -17,6 +17,7 @@ from torch.utils.data import (
 from torchvision import datasets, transforms
 from tqdm import tqdm
 import skimage as sk
+from skimage import transform, feature
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,26 @@ def impulse_noise(x, severity=4):
     return x.astype(np.float32)
 
 
+def rotate(x, severity=2):
+    c = [0.2, 0.4, 0.6, 0.8, 1.0][severity - 1]
+
+    # Randomly switch directions
+    bit = np.random.choice([-1, 1], 1)[0]
+    c *= bit
+    aff = transform.AffineTransform(rotation=c)
+
+    a1, a2 = aff.params[0, :2]
+    b1, b2 = aff.params[1, :2]
+    a3 = 13.5 * (1 - a1 - a2)
+    b3 = 13.5 * (1 - b1 - b2)
+    aff = transform.AffineTransform(rotation=c, translation=[a3, b3])
+
+    x = np.array(x) / 255.0
+    x = transform.warp(x, inverse_map=aff)
+    x = np.clip(x, 0, 1) * 255
+    return x.astype(np.float32)
+
+
 def get_MNIST_C(
     handler, data_dir: str = "../data", validation_set_size: int = 1024
 ) -> Data:
@@ -186,7 +207,7 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.Lambda(lambda x: shot_noise(x, severity=2)),
+                transforms.Lambda(lambda x: rotate(x, severity=2)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
