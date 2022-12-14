@@ -4,7 +4,7 @@ windows:
           shell_command_before:
                   - cd ../src
                   - conda activate pnml_for_active_learning
-                  - export WANDB_GROUP_ID=BASELINE
+                  - export WANDB_GROUP_ID=TRANSLATE
           panes:
                   - shell_command:
                             - sleep 0
@@ -36,3 +36,8 @@ windows:
                             - python main.py dataset_name=MNIST_C strategy_name=RandomSampling seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST_C strategy_name=DropoutPnml seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST_C strategy_name=BALDDropout seed=5 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                  - shell_command:
+                            - sleep 60
+                            - python main.py dataset_name=MNIST_C strategy_name=RandomSampling seed=6 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST_C strategy_name=DropoutPnml seed=6 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
+                            - python main.py dataset_name=MNIST_C strategy_name=BALDDropout seed=6 n_init_labeled=20 n_round=300 n_query=1 batch_size=64
