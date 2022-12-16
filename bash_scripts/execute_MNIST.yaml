@@ -13,31 +13,31 @@ windows:
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=0 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=0 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
-                            - sleep 1
+                            - sleep 5
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=1 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=1 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=1 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=1 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
-                            - sleep 2
+                            - sleep 10
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=2 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=2 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=2 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=2 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
-                            - sleep 3
+                            - sleep 20
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
-                            - sleep 4
+                            - sleep 25
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=4 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=4 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=4 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=4 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
-                            - sleep 5
+                            - sleep 30
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=5 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=5 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                             - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=5 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
