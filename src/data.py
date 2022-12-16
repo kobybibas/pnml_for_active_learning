@@ -18,8 +18,21 @@ from torchvision import datasets, transforms
 from tqdm import tqdm
 import skimage as sk
 from skimage import transform
+from torchvision.utils import make_grid
+import wandb
 
 logger = logging.getLogger(__name__)
+
+
+def wandb_mnist_plot_images(data_tensor, title="MNIST Images"):
+    image_array = make_grid(
+        data_tensor[:64].unsqueeze(1),
+        nrow=8,
+        padding=2,
+        pad_value=0,
+    )
+    images = wandb.Image(image_array)
+    wandb.log({title: images})
 
 
 class Data:
@@ -146,58 +159,6 @@ def get_MNIST(
     )
 
 
-def identity(x):
-    return np.array(x, dtype=np.float32)
-
-
-def shot_noise(x, severity=5):
-    c = [60, 25, 12, 5, 3][severity - 1]
-
-    x = np.array(x) / 255.0
-    x = np.clip(np.random.poisson(x * c) / float(c), 0, 1) * 255
-    return x.astype(np.float32)
-
-
-def impulse_noise(x, severity=4):
-    c = [0.03, 0.06, 0.09, 0.17, 0.27][severity - 1]
-    x = sk.util.random_noise(np.array(x) / 255.0, mode="s&p", amount=c)
-    x = np.clip(x, 0, 1) * 255
-    return x.astype(np.float32)
-
-
-def rotate(x, severity=2):
-    c = [0.2, 0.4, 0.6, 0.8, 1.0][severity - 1]
-
-    # Randomly switch directions
-    bit = np.random.choice([-1, 1], 1)[0]
-    c *= bit
-    aff = transform.AffineTransform(rotation=c)
-
-    a1, a2 = aff.params[0, :2]
-    b1, b2 = aff.params[1, :2]
-    a3 = 13.5 * (1 - a1 - a2)
-    b3 = 13.5 * (1 - b1 - b2)
-    aff = transform.AffineTransform(rotation=c, translation=[a3, b3])
-
-    x = np.array(x) / 255.0
-    x = transform.warp(x, inverse_map=aff)
-    x = np.clip(x, 0, 1) * 255
-    return x.astype(np.float32)
-
-
-def translate(x, severity=3):
-    c = [1, 2, 3, 4, 5][severity - 1]
-    bit = np.random.choice([-1, 1], 2)
-    dx = c * bit[0]
-    dy = c * bit[1]
-    aff = transform.AffineTransform(translation=[dx, dy])
-
-    x = np.array(x) / 255.0
-    x = transform.warp(x, inverse_map=aff)
-    x = np.clip(x, 0, 1) * 255
-    return x.astype(np.float32)
-
-
 def get_MNIST_C(
     handler, data_dir: str = "../data", validation_set_size: int = 1024
 ) -> Data:
@@ -207,7 +168,10 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.Lambda(lambda x: identity(x)),
+                transforms.RandomApply(
+                    [transforms.GaussianBlur(kernel_size=3)],
+                    p=0.5,
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
@@ -219,7 +183,6 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.Lambda(lambda x: translate(x, severity=1)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
@@ -229,6 +192,7 @@ def get_MNIST_C(
     for x, y in raw_train:
         train_data.append(x)
         train_targets.append(y)
+
     val_data = torch.vstack(train_data[-validation_set_size:])
     val_targets = train_targets[-validation_set_size:]
     train_data = torch.vstack(train_data[:-validation_set_size])
@@ -239,6 +203,10 @@ def get_MNIST_C(
         test_data.append(x)
         test_targets.append(y)
     test_data = torch.vstack(test_data)
+
+    # Plot
+    wandb_mnist_plot_images(train_data, tite="Training set")
+    wandb_mnist_plot_images(test_data, tite="Test set")
 
     return Data(
         train_data,
