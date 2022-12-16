@@ -23,6 +23,7 @@ from query_strategies import (
     MarginSampling,
     MarginSamplingDropout,
     RandomSampling,
+    DropoutGenie,
 )
 from query_strategies.strategy import Strategy
 
@@ -85,9 +86,8 @@ def get_net(name):
 def get_strategy(
     name: str,
     n_drop: int = 10,
-    unlabeled_batch_size: int = -1,
+    query_batch_size: int = -1,
     unlabeled_pool_size: int = -1,
-    test_batch_size: int = -1,
     test_set_size: int = -1,
 ) -> Strategy:
     if name == "RandomSampling":
@@ -120,17 +120,15 @@ def get_strategy(
     elif name == "DropoutPnml":
         return DropoutPnml(
             n_drop=n_drop,
-            unlabeled_batch_size=unlabeled_batch_size,
+            query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
-            test_batch_size=test_batch_size,
             test_set_size=test_set_size,
         )
-    elif name == "SwaPnml":
-        return DropoutPnml(
+    elif name == "DropoutGenie":
+        return DropoutGenie(
             n_drop=n_drop,
-            unlabeled_batch_size=unlabeled_batch_size,
+            query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
-            test_batch_size=test_batch_size,
             test_set_size=test_set_size,
         )
 

@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 import numpy as np
 import pytorch_lightning as pl
@@ -8,8 +7,54 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics.functional import accuracy
+from omegaconf import DictConfig, OmegaConf
+from pytorch_lightning.callbacks import (
+    EarlyStopping,
+    LearningRateMonitor,
+    ModelCheckpoint,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def initalize_trainer(
+    cfg: DictConfig,
+    wandb_logger,
+    enable_progress_bar: bool = False,
+    is_lr_monitor: bool = False,
+    out_dir: str = None,
+):
+    callbacks = [
+        EarlyStopping(
+            monitor="loss/val",
+            mode="min",
+            patience=cfg.early_stopping_patience,
+        )
+    ]
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=out_dir,
+        save_top_k=1,
+        monitor="loss/val",
+        mode="min",
+        filename="best.pth",
+    )
+    callbacks.append(checkpoint_callback)
+    if is_lr_monitor:
+        callbacks.append(LearningRateMonitor(logging_interval="step"))
+
+    trainer = pl.Trainer(
+        max_epochs=cfg.max_epochs,
+        min_epochs=cfg.min_epochs,
+        default_root_dir=out_dir,
+        enable_checkpointing=True,
+        gpus=1 if torch.cuda.is_available() else None,
+        logger=wandb_logger,
+        num_sanity_val_steps=0,
+        enable_progress_bar=enable_progress_bar,
+        log_every_n_steps=1 if enable_progress_bar else 1000,
+        callbacks=callbacks,
+    )
+    return trainer, checkpoint_callback
 
 
 class LitClassifier(pl.LightningModule):

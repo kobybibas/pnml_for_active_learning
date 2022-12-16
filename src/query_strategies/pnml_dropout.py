@@ -1,6 +1,4 @@
 import logging
-import time
-from time import time
 
 import torch
 import wandb
@@ -18,17 +16,40 @@ class DropoutPnml(Strategy):
     def __init__(
         self,
         n_drop: int = 10,
-        unlabeled_batch_size=256,
+        query_batch_size=256,
         unlabeled_pool_size=256,
-        test_batch_size=256,
         test_set_size: int = 512,
     ):
         self.eps = 1e-6
         self.n_drop = n_drop
-        self.unlabeled_batch_size = unlabeled_batch_size
+        self.batch_size = query_batch_size
         self.unlabeled_pool_size = unlabeled_pool_size
-        self.test_batch_size = test_batch_size
         self.test_set_size = test_set_size
+
+    def build_dataloaders(self, dataset):
+        # Candidate set
+        _, candidate_set = dataset.get_unlabeled_data()
+        candidate_idx_subset = torch.randperm(len(candidate_set))[
+            : self.unlabeled_pool_size
+        ]
+        candidate_subset = Subset(candidate_set, candidate_idx_subset)
+
+        # Test set
+        test_set = dataset.get_test_data()
+        test_idx_subset = torch.randperm(len(test_set))[: self.test_set_size]
+        test_subset = Subset(test_set, test_idx_subset)
+
+        # Dataloaders
+        candidate_loader = DataLoader(
+            candidate_subset,
+            batch_size=self.batch_size,
+            num_workers=0,
+            shuffle=False,
+        )
+        test_loader = DataLoader(
+            test_subset, batch_size=self.batch_size, num_workers=0, shuffle=False
+        )
+        return candidate_loader, test_loader
 
     def model_inference(self, net, x_candidates, x_test):
         num_candidates, num_test = len(x_candidates), len(x_test)
@@ -49,84 +70,60 @@ class DropoutPnml(Strategy):
         # Calculate log_probs_candidates + log_probs_test
         a, b = torch.meshgrid(log_probs_candidates.flatten(), log_probs_test.flatten())
         scores = (a + b).reshape(num_candidates, num_labels, num_test, num_labels)
-
         return probs_test, scores
 
-    def query(self, n, net, dataset):
-        torch.set_grad_enabled(False)
+    def calc_test_batch_regret(self, net, x_candidates, x_test):
+        model_scores, model_test_probs = [], []
+        for _ in range(self.n_drop):
+            test_probs, scores = self.model_inference(net, x_candidates, x_test)
+            model_scores.append(scores.cpu())
+            model_test_probs.append(test_probs.cpu())
 
-        # Datasets
-        candidate_idx_original, candidate_set = dataset.get_unlabeled_data()
-        idx_subset = torch.randperm(len(candidate_set))[: self.unlabeled_pool_size]
-        candidate_subset = Subset(candidate_set, idx_subset)
+        model_scores = torch.stack(model_scores, -1)
+        model_test_probs = torch.stack(model_test_probs, -1)
+        return model_scores, model_test_probs
 
-        test_set = dataset.get_test_data()
-        idx_subset = torch.randperm(len(test_set))[: self.test_set_size]
-        test_subset = Subset(test_set, idx_subset)
+    def iterate_test_loader(self, net, test_loader, x_candidates):
+        regrets = []
+        for x_test, _, _ in test_loader:
+            scores, test_probs = self.calc_test_batch_regret(net, x_candidates, x_test)
+            num_candidates, num_labels = scores.shape[:2]
 
-        # Dataloaders
-        candidate_loader = DataLoader(
-            candidate_subset,
-            batch_size=self.unlabeled_batch_size,
-            num_workers=0,
-            shuffle=False,
-        )
-        test_loader = DataLoader(
-            test_subset, batch_size=self.test_batch_size, num_workers=0, shuffle=False
-        )
+            # Duplicate to fit model_scores
+            test_probs = (
+                test_probs.unsqueeze(0)
+                .unsqueeze(0)
+                .repeat(num_candidates, num_labels, 1, 1, 1)
+            )
 
-        # Inference
+            # Calculate the model that maximizes log_probs_candidates + log_probs_test
+            _, chosen_model_idxs = scores.max(axis=-1)
+
+            # Best model prediction probability
+            max_probs = torch.gather(
+                test_probs, -1, chosen_model_idxs.unsqueeze(-1)
+            ).squeeze()
+
+            # Regret for each test sample
+            regrets_i = max_probs.sum(axis=-1).log()
+            regrets.append(regrets_i)
+        regrets = torch.cat(regrets, -1)
+        return regrets
+
+    def iterate_candidate_loader(self, net, candidate_loader, test_loader):
         net.train()
-        mean_regrets, idx_candidates = [], []
-        for x_candidates, _, idx_candidates_batch in tqdm(
-            candidate_loader, desc="DropoutPnml candidates"
-        ):
-            regrets = []
-            for x_test, _, _ in test_loader:
-                model_scores, model_probs_test = [], []
-                for _ in range(self.n_drop):
-                    num_candidates, num_test = len(x_candidates), len(x_test)
-                    probs_test, scores = self.model_inference(net, x_candidates, x_test)
-                    num_labels = probs_test.size(1)
-                    model_scores.append(scores.cpu())
-                    model_probs_test.append(probs_test.cpu())
+        regrets, candidate_idxs = [], []
+        for x_candidates, _, candidate_idxs_b in tqdm(candidate_loader, desc="Query"):
+            batch_regrets = self.iterate_test_loader(net, test_loader, x_candidates)
+            regrets.append(batch_regrets)
+            candidate_idxs.append(candidate_idxs_b)
+        candidate_idxs = torch.hstack(candidate_idxs)
 
-                model_scores = torch.stack(model_scores, -1)
-                model_probs_test = torch.stack(model_probs_test, -1)
+        # Average regret over the test set
+        regrets = torch.cat(regrets, -1).mean(axis=-1)
+        return regrets, candidate_idxs
 
-                # Duplicate to fit model_scores
-                model_probs_test = (
-                    model_probs_test.unsqueeze(0)
-                    .unsqueeze(0)
-                    .repeat(num_candidates, num_labels, 1, 1, 1)
-                )
-
-                # Calculate the model that maxzimies log_probs_candidates + log_probs_test
-                _, model_chosen = model_scores.max(axis=-1)
-
-                # Best model prediction probability
-                max_probs = torch.gather(
-                    model_probs_test, -1, model_chosen.unsqueeze(-1)
-                ).squeeze()
-
-                # Regret for each test sample
-                regrets_i = max_probs.sum(axis=-1).log()
-                regrets.append(regrets_i)
-
-            # Average regret over the test set
-            regrets = torch.cat(regrets, -1).mean(axis=-1)
-            mean_regrets.append(regrets)
-            idx_candidates.append(idx_candidates_batch)
-
-        # Verify all candidates indecies are indeed unlabeled.
-        idx_candidates = torch.hstack(idx_candidates)
-        assert (
-            torch.isin(idx_candidates, torch.from_numpy(candidate_idx_original))
-            .min()
-            .item()
-        )
-
-        mean_regrets = torch.vstack(mean_regrets)
+    def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
         max_y_regret, max_y_idx = mean_regrets.max(axis=-1)
         min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
 
@@ -138,5 +135,19 @@ class DropoutPnml(Strategy):
             }
         )
 
-        torch.set_grad_enabled(True)
         return idx_candidates[min_x_idx[:n]]
+
+    def query(self, n, net, dataset):
+        torch.set_grad_enabled(False)
+
+        # Datasets
+        candidate_loader, test_loader = self.build_dataloaders(dataset)
+
+        # Inference
+        regrets, candidate_idxs = self.iterate_candidate_loader(
+            net, candidate_loader, test_loader
+        )
+
+        choesn_idxs = self.regert_best_selection(regrets, candidate_idxs, dataset, n)
+        torch.set_grad_enabled(True)
+        return choesn_idxs

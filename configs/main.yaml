@@ -9,15 +9,14 @@ data_dir: ../data
 n_init_labeled: 20 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 300 # Number of rounds. Default 10
-dataset_name: MNIST_C # "MNIST", "EMNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
-strategy_name: DropoutPnml #  "DropoutPnml", "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+dataset_name: MNIST # "MNIST", "EMNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
+strategy_name: DropoutPnml #  "DropoutPnml", DropoutGenie "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
 # Active learning inference
-n_drop: 10
-unlabeled_batch_size: 256
-unlabeled_pool_size: 256
-test_batch_size: 256
+n_drop: 8
+query_batch_size: 256
+unlabeled_pool_size: 255
 test_set_size: 512
 
 # Optimization
@@ -33,12 +32,7 @@ weight_decay: 1e-4
 early_stopping_patience: 10
 reduce_on_plature_patience: 3
 dropout: 0.5
-precision: 32
-
-# SWA parameters
-swa_lr: 0.001
-swa_epoch_start: 5
-swa_annealing_epochs: 10
+precision: 16
 
 hydra:
   job:

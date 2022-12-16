@@ -25,8 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 def wandb_mnist_plot_images(data_tensor, title="MNIST Images"):
+    perm = torch.randperm(data_tensor.size(0))
+    idx = perm[:64]
     image_array = make_grid(
-        data_tensor[:64].unsqueeze(1),
+        data_tensor[idx].unsqueeze(1),
         nrow=8,
         padding=2,
         pad_value=0,
@@ -58,6 +60,7 @@ class Data:
         self.labeled_idxs = np.zeros(self.n_pool, dtype=bool)
 
         # Propogate trought dataloader to have vectors transformed vectors to the experimnet
+        self.X_train_org = X_train
         self.X_train, self.Y_train = self.transfor_set(X_train, Y_train, self.device)
         self.X_val, self.Y_val = self.transfor_set(X_val, Y_val, self.device)
         self.X_test, self.Y_test = self.transfor_set(X_test, Y_test, self.device)
@@ -168,10 +171,6 @@ def get_MNIST_C(
         download=True,
         transform=transforms.Compose(
             [
-                transforms.RandomApply(
-                    [transforms.GaussianBlur(kernel_size=3)],
-                    p=0.5,
-                ),
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
             ]
@@ -185,6 +184,7 @@ def get_MNIST_C(
             [
                 transforms.ToTensor(),
                 transforms.Normalize((0.1307,), (0.3081,)),
+                transforms.RandomErasing(p=0.5, scale=(0.05, 0.1)),
             ]
         ),
     )
@@ -204,9 +204,10 @@ def get_MNIST_C(
         test_targets.append(y)
     test_data = torch.vstack(test_data)
 
-    # Plot
-    wandb_mnist_plot_images(train_data, tite="Training set")
-    wandb_mnist_plot_images(test_data, tite="Test set")
+    # Plot x5
+    for _ in range(5):
+        wandb_mnist_plot_images(train_data, title="Training set")
+        wandb_mnist_plot_images(test_data, title="Test set")
 
     return Data(
         train_data,
@@ -362,31 +363,6 @@ def get_dataloaders(
     dataset, batch_size: int
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
     train_dataset = dataset.get_labeled_data()[-1]
-
-    if False:
-        # Upsample sparse data
-        label_bin_count = dataset.get_labeled_labels().bincount()
-        class_weights = label_bin_count.sum() / label_bin_count
-        sample_weights = [0] * len(train_dataset)
-        for idx, (_, label, _) in enumerate(train_dataset):
-            class_weight = class_weights[label]
-            sample_weights[idx] = class_weight.cpu().item()
-
-        sampler = WeightedRandomSampler(
-            weights=sample_weights,
-            num_samples=len(train_dataset),
-            replacement=True,
-        )
-
-        train_loader = DataLoader(
-            train_dataset,
-            # shuffle=True,
-            batch_size=batch_size,
-            num_workers=0,
-            drop_last=True,
-            sampler=sampler,
-        )
-
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         sampler=RandomFixedLengthSampler(train_dataset, 5056),

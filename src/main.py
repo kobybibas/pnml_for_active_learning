@@ -2,6 +2,7 @@ import logging
 import os
 import os.path as osp
 import time
+from glob import glob
 
 import hydra
 import numpy as np
@@ -9,69 +10,14 @@ import pytorch_lightning as pl
 import torch
 import wandb
 from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import (
-    EarlyStopping,
-    StochasticWeightAveraging,
-    LearningRateMonitor,
-    ModelCheckpoint,
-)
-from glob import glob
 from pytorch_lightning.loggers import WandbLogger
+from torchvision.utils import make_grid
 
 from data import get_dataloaders
-from lit_utils import LitClassifier
+from lit_utils import LitClassifier, initalize_trainer
 from utils import get_dataset, get_net, get_strategy
 
 logger = logging.getLogger(__name__)
-
-
-def initalize_trainer(
-    cfg: DictConfig,
-    wandb_logger,
-    enable_progress_bar: bool = False,
-    is_lr_monitor: bool = False,
-    is_swa: bool = False,
-    out_dir: str = None,
-):
-    callbacks = [
-        EarlyStopping(
-            monitor="loss/val",  # "acc/val",
-            mode="min",  # max
-            patience=cfg.early_stopping_patience,
-        )
-    ]
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=out_dir,
-        save_top_k=1,
-        monitor="loss/val",
-        mode="min",
-        filename="best.pth",
-    )
-    callbacks.append(checkpoint_callback)
-    if is_swa:
-        callbacks.append(
-            StochasticWeightAveraging(
-                swa_epoch_start=cfg.swa_epoch_start,
-                annealing_epochs=cfg.swa_annealing_epochs,
-                swa_lrs=cfg.swa_lr,
-            )
-        )
-    if is_lr_monitor:
-        callbacks.append(LearningRateMonitor(logging_interval="step"))
-
-    trainer = pl.Trainer(
-        max_epochs=cfg.max_epochs,
-        min_epochs=cfg.min_epochs if is_swa is False else cfg.swa_epoch_start,
-        default_root_dir=out_dir,
-        enable_checkpointing=True,
-        gpus=1 if torch.cuda.is_available() else None,
-        logger=wandb_logger,
-        num_sanity_val_steps=0,
-        enable_progress_bar=enable_progress_bar,
-        log_every_n_steps=1 if enable_progress_bar else 100,
-        callbacks=callbacks,
-    )
-    return trainer, checkpoint_callback
 
 
 @hydra.main(version_base="1.2", config_path="../configs/", config_name="main")
@@ -103,9 +49,8 @@ def execute_active_learning(cfg: DictConfig):
     strategy = get_strategy(
         cfg.strategy_name,
         n_drop=cfg.n_drop,
-        unlabeled_batch_size=cfg.unlabeled_batch_size,
+        query_batch_size=cfg.query_batch_size,
         unlabeled_pool_size=cfg.unlabeled_pool_size,
-        test_batch_size=cfg.test_batch_size,
         test_set_size=cfg.test_set_size,
     )
 
@@ -113,15 +58,14 @@ def execute_active_learning(cfg: DictConfig):
     dataset.initialize_labels(cfg.n_init_labeled)
     for rd in range(cfg.n_round):
         t1 = time.time()
-
         is_debug = rd == 0
+
         lit_h = LitClassifier(net, cfg, device)
         trainer, checkpoint_callback = initalize_trainer(
             cfg,
             wandb_logger,
             enable_progress_bar=is_debug,
             is_lr_monitor=is_debug,
-            is_swa=cfg.strategy_name == "SwaPnml",
             out_dir=out_dir,
         )
 
@@ -162,6 +106,14 @@ def execute_active_learning(cfg: DictConfig):
                 for label in np.arange(0, 10, 1)
             }
         )
+        if False:
+            imgs = dataset.X_train_org[query_idxs]
+            image_array = make_grid(
+                imgs,
+                nrow=1,
+            )
+            images = wandb.Image(image_array)
+            wandb.log({"Queried images": images})
 
     logger.info(f"Finish in {time.time()-t0:.1f} sec")
 
