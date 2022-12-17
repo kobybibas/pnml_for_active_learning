@@ -4,8 +4,6 @@ import torch
 import wandb
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
-import numpy as np
-
 
 from .strategy import Strategy
 
@@ -25,6 +23,7 @@ class DropoutPnml(Strategy):
         self.batch_size = query_batch_size
         self.unlabeled_pool_size = unlabeled_pool_size
         self.test_set_size = test_set_size
+        self.temperature = 1.0
 
     def build_dataloaders(self, dataset):
         # Candidate set
@@ -46,10 +45,16 @@ class DropoutPnml(Strategy):
             num_workers=0,
             shuffle=False,
         )
+        val_loader = DataLoader(
+            dataset.get_val_data(),
+            batch_size=self.batch_size,
+            num_workers=0,
+            shuffle=False,
+        )
         test_loader = DataLoader(
             test_subset, batch_size=self.batch_size, num_workers=0, shuffle=False
         )
-        return candidate_loader, test_loader
+        return candidate_loader, val_loader, test_loader
 
     def model_inference(self, net, x_candidates, x_test):
         num_candidates, num_test = len(x_candidates), len(x_test)
@@ -57,7 +62,9 @@ class DropoutPnml(Strategy):
         # Inference
         device = net.device
         x_candidates, x_test = x_candidates.to(device), x_test.to(device)
-        preds, _ = net(torch.vstack((x_candidates, x_test)))
+        preds, _ = net(
+            torch.vstack((x_candidates, x_test)), temperature=self.temperature
+        )
         num_labels = preds.size(1)
         probs = torch.softmax(preds, -1)
         log_probs = torch.log_softmax(preds, -1)
@@ -141,7 +148,11 @@ class DropoutPnml(Strategy):
         torch.set_grad_enabled(False)
 
         # Datasets
-        candidate_loader, test_loader = self.build_dataloaders(dataset)
+        candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
+
+        self.temperature = net.calibrate(val_loader)
+        wandb.log({"temperature": self.temperature})
+        logger.info(f"Temperature: {self.temperature}")
 
         # Inference
         regrets, candidate_idxs = self.iterate_candidate_loader(

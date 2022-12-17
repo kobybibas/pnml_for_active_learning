@@ -70,8 +70,8 @@ class LitClassifier(pl.LightningModule):
         # Loss
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, x):
-        return self.clf(x)
+    def forward(self, x, temperature=1.0):
+        return self.clf(x, temperature=temperature)
 
     def training_step(self, batch, batch_idx):
         return self._loss_helper(batch, "train")
@@ -176,3 +176,37 @@ class LitClassifier(pl.LightningModule):
                 _, e1 = self.clf(x)
                 embeddings.append(e1)
         return torch.vstack(embeddings)
+
+    def T_scaling(self, logits, temperature):
+        return torch.div(logits, temperature)
+
+    def calibrate(self, val_loader: DataLoader):
+        self.clf.eval()
+        device = self.device
+
+        temperature = nn.Parameter(torch.ones(1).cuda())
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.LBFGS(
+            [temperature], lr=0.001, max_iter=10000, line_search_fn="strong_wolfe"
+        )
+
+        logits_list, labels_list = [], []
+        for images, labels, _ in val_loader:
+            images, labels = images.to(device), labels.to(device)
+
+            with torch.no_grad():
+                _, logits = self.clf(images)
+                logits_list.append(logits)
+                labels_list.append(labels)
+
+        # Create tensors
+        logits_list = torch.vstack(logits_list)
+        labels_list = torch.hstack(labels_list)
+
+        def _eval():
+            loss = criterion(self.T_scaling(logits_list, temperature), labels_list)
+            loss.backward()
+            return loss
+
+        optimizer.step(_eval)
+        return temperature.cpu().detach().item()

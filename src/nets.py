@@ -26,7 +26,7 @@ class MNIST_Net(nn.Module):
         self.drop3 = nn.Dropout(cfg.dropout)
         self.fc2 = nn.Linear(128, 10)
 
-    def forward(self, x_in):
+    def forward(self, x_in, temperature=1.0):
         x = self.conv1(x_in)
         x = self.drop1(x)
         x = self.max_pool1(x)
@@ -40,7 +40,7 @@ class MNIST_Net(nn.Module):
         x = x.view(-1, 1024)
         x = self.fc1(x)
         e1 = self.drop3(x)
-        y = self.fc2(e1)
+        y = self.fc2(e1 / temperature)
         return y, e1
 
     def get_embedding_dim(self):

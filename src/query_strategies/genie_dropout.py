@@ -1,12 +1,7 @@
 import logging
-import time
-from time import time
 
-import numpy as np
 import torch
 import wandb
-from torch.utils.data import DataLoader, Subset
-from tqdm import tqdm
 
 from .pnml_dropout import DropoutPnml
 
@@ -28,5 +23,5 @@ class DropoutGenie(DropoutPnml):
             ]
         )
         min_x_regret, min_x_idx = regret_based_on_true_y.sort(descending=False, axis=-1)
-        wandb.log("regret_of_chosen", min_x_regret[0].item())
+        wandb.log({"regret_of_chosen": min_x_regret[0].item()})
         return idx_candidates[min_x_idx[:n]]

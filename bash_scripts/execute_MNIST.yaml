@@ -4,7 +4,7 @@ windows:
           shell_command_before:
                   - cd ../src
                   - conda activate pnml_for_active_learning
-                  - export WANDB_GROUP_ID=BASELINE3
+                  - export WANDB_GROUP_ID=BASELINE
           panes:
                   - shell_command:
                             - sleep 0
@@ -26,10 +26,10 @@ windows:
                             - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=2 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 20
-                            - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
-                            - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
+                              - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
+                              - python main.py dataset_name=MNIST strategy_name=DropoutPnml seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
+                              - python main.py dataset_name=MNIST strategy_name=DropoutGenie seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
+                              - python main.py dataset_name=MNIST strategy_name=BALDDropout seed=3 n_init_labeled=20 n_round=500 n_query=1 batch_size=64
                   - shell_command:
                             - sleep 25
                             - python main.py dataset_name=MNIST strategy_name=RandomSampling seed=4 n_init_labeled=20 n_round=500 n_query=1 batch_size=64

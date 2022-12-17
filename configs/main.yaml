@@ -10,7 +10,7 @@ n_init_labeled: 20 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 300 # Number of rounds. Default 10
 dataset_name: MNIST # "MNIST", "EMNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
-strategy_name: DropoutPnml #  "DropoutPnml", DropoutGenie "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
+strategy_name: DropoutGenie #  "DropoutPnml", DropoutGenie "SingleLayerPnml",  "RandomSampling", "LeastConfidence", "MarginSampling", "EntropySampling", "LeastConfidenceDropout", "MarginSamplingDropout", "EntropySamplingDropout", "KMeansSampling", "KCenterGreedy", "BALDDropout", "AdversarialBIM", "AdversarialDeepFool",
 validation_set_size: 1024
 
 # Active learning inference
