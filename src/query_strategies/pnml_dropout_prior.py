@@ -25,6 +25,8 @@ class DropoutPnml(Strategy):
         self.test_set_size = test_set_size
         self.temperature = 1.0
 
+    logger.info("DropoutPnml prior")
+
     def build_dataloaders(self, dataset):
         # Candidate set
         _, candidate_set = dataset.get_unlabeled_data()
@@ -124,10 +126,20 @@ class DropoutPnml(Strategy):
             batch_regrets = self.iterate_test_loader(net, test_loader, x_candidates)
             regrets.append(batch_regrets)
             candidate_idxs.append(candidate_idxs_b)
+
         candidate_idxs = torch.hstack(candidate_idxs)
 
         # Average regret over the test set
         regrets = torch.cat(regrets, -1).mean(axis=-1)
+
+        # Multiple by prior
+        net.eval()
+        priors = []
+        for x_candidates, _, _ in tqdm(candidate_loader, desc="Query"):
+            preds, _ = net(x_candidates, temperature=self.temperature)
+            priors.append(preds.cpu())
+        priors = 1 - torch.cat(priors, -1).softmax(-1)
+        regrets = priors * regrets
         return regrets, candidate_idxs
 
     def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
@@ -150,9 +162,9 @@ class DropoutPnml(Strategy):
         # Datasets
         candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
 
-        # self.temperature = net.calibrate(val_loader)
-        # wandb.log({"temperature": self.temperature})
-        # logger.info(f"Temperature: {self.temperature}")
+        self.temperature = net.calibrate(val_loader)
+        wandb.log({"temperature": self.temperature})
+        logger.info(f"Temperature: {self.temperature}")
 
         # Inference
         regrets, candidate_idxs = self.iterate_candidate_loader(

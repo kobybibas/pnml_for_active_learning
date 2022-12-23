@@ -10,5 +10,7 @@ from .kcenter_greedy import KCenterGreedy
 from .bayesian_active_learning_disagreement_dropout import BALDDropout
 from .adversarial_bim import AdversarialBIM
 from .adversarial_deepfool import AdversarialDeepFool
-from .pnml_dropout import DropoutPnml
+
+# from .pnml_dropout import DropoutPnml
+from .pnml_dropout_prior import DropoutPnml
 from .genie_dropout import DropoutGenie

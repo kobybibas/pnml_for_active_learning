@@ -115,7 +115,9 @@ class Data:
         return self.Y_train[self.labeled_idxs]
 
     def get_labeled_data(self) -> Tuple[np.array, Subset]:
-        labeled_idxs = np.arange(self.n_pool)[self.labeled_idxs]
+        labeled_idxs = np.arange(self.n_pool)[
+            self.labeled_idxs & (self.Y_train.cpu().numpy() != -1)  # TODO: OOD make more elegant
+        ]
         return labeled_idxs, Subset(self.train_dataset, labeled_idxs)
 
     def get_unlabeled_data(self) -> Tuple[np.array, TensorDataset]:
@@ -136,6 +138,18 @@ class Data:
 
     def cal_test_loss(self, probs: torch.Tensor) -> float:
         return cross_entropy(probs, self.Y_test.to(probs.device)).item()
+
+
+# TODO: constrain as argument
+def extract_dataset_to_tensors(
+    raw_dataset: torch.utils.data.Dataset, constrain: int = 10000
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    data_list, target_list = [], []
+    for x, y in raw_dataset:
+        data_list.append(x)
+        target_list.append(y)
+    data_list = torch.vstack(data_list)
+    return data_list[:constrain], torch.tensor(target_list)[:constrain]
 
 
 def get_MNIST(
@@ -203,6 +217,77 @@ def get_MNIST_C(
         test_data.append(x)
         test_targets.append(y)
     test_data = torch.vstack(test_data)
+
+    # Plot x5
+    for _ in range(5):
+        wandb_mnist_plot_images(train_data, title="Training set")
+        wandb_mnist_plot_images(test_data, title="Test set")
+
+    return Data(
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+        handler,
+    )
+
+
+def get_MNIST_OOD(
+    handler, data_dir: str = "../data", validation_set_size: int = 1024
+) -> Data:
+
+    # Train set
+    raw_train = datasets.MNIST(
+        data_dir,
+        train=True,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+
+    raw_ood = datasets.FashionMNIST(
+        data_dir,
+        train=False,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+
+    train_data, train_targets = extract_dataset_to_tensors(raw_train)
+    val_data = train_data[-validation_set_size:]
+    val_targets = train_targets[-validation_set_size:]
+    train_data = train_data[:-validation_set_size]
+    train_targets = train_targets[:-validation_set_size]
+
+    ood_data, _ = extract_dataset_to_tensors(raw_ood)
+    train_data = torch.vstack((train_data, ood_data))
+    train_targets = torch.hstack(
+        (train_targets, -1 * torch.ones(ood_data.shape[0]))
+    ).long()
+
+    # Test set
+    raw_test = datasets.MNIST(
+        data_dir,
+        train=False,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test)
 
     # Plot x5
     for _ in range(5):

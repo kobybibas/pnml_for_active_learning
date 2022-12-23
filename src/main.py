@@ -103,10 +103,10 @@ def execute_active_learning(cfg: DictConfig):
             | {
                 f"label_{label}_ratio": (training_labels == label).sum()
                 / len(training_labels)
-                for label in np.arange(0, 10, 1)
+                for label in np.arange(training_labels.min(), training_labels.max(), 1)
             }
         )
-        if False:
+        if True:
             imgs = dataset.X_train_org[query_idxs]
             image_array = make_grid(
                 imgs,

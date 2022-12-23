@@ -50,6 +50,47 @@ class MNIST_Net(nn.Module):
         return self.fc2
 
 
+class MNIST_OOD_Net(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 32, 5)
+        self.drop1 = nn.Dropout(cfg.dropout)
+        self.max_pool1 = nn.MaxPool2d(2)
+        self.relu1 = nn.ReLU()
+
+        self.conv2 = nn.Conv2d(32, 64, 5)
+        self.drop2 = nn.Dropout(cfg.dropout)
+        self.max_pool2 = nn.MaxPool2d(2)
+        self.relu2 = nn.ReLU()
+
+        self.fc1 = nn.Linear(1024, 128)
+        self.drop3 = nn.Dropout(cfg.dropout)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x_in, temperature=1.0):
+        x = self.conv1(x_in)
+        x = self.drop1(x)
+        x = self.max_pool1(x)
+        x = self.relu1(x)
+
+        x = self.conv2(x)
+        x = self.drop2(x)
+        x = self.max_pool2(x)
+        x = self.relu2(x)
+
+        x = x.view(-1, 1024)
+        x = self.fc1(x)
+        e1 = self.drop3(x)
+        y = self.fc2(e1 / temperature)
+        return y, e1
+
+    def get_embedding_dim(self):
+        return 128
+
+    def get_classifer(self):
+        return self.fc2
+
+
 class EMNIST_Net(nn.Module):
     def __init__(self, cfg):
         super().__init__()
