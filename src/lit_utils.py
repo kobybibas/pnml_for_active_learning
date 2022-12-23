@@ -58,7 +58,7 @@ def initalize_trainer(
 
 
 class LitClassifier(pl.LightningModule):
-    def __init__(self, net, cfg, device: str):
+    def __init__(self, net, cfg, device: str, class_weight: torch.Tensor = None):
         self.cfg = cfg
         self.device_ = device
         self.save_hyperparameters()
@@ -68,7 +68,7 @@ class LitClassifier(pl.LightningModule):
         self.clf = net(cfg)
 
         # Loss
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(weight=class_weight)
 
     def forward(self, x, temperature=1.0):
         return self.clf(x, temperature=temperature)

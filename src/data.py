@@ -116,7 +116,8 @@ class Data:
 
     def get_labeled_data(self) -> Tuple[np.array, Subset]:
         labeled_idxs = np.arange(self.n_pool)[
-            self.labeled_idxs & (self.Y_train.cpu().numpy() != -1)  # TODO: OOD make more elegant
+            self.labeled_idxs
+            & (self.Y_train.cpu().numpy() != -1)  # TODO: OOD make more elegant
         ]
         return labeled_idxs, Subset(self.train_dataset, labeled_idxs)
 

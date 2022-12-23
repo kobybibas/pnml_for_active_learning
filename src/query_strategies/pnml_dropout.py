@@ -161,4 +161,11 @@ class DropoutPnml(Strategy):
 
         choesn_idxs = self.regert_best_selection(regrets, candidate_idxs, dataset, n)
         torch.set_grad_enabled(True)
+
+        # For debug:
+        unlabled_labels = dataset.Y_train
+        max_y_regret, _ = regrets.max(axis=-1)
+        min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
+        logger.info(unlabled_labels[min_x_idx])
+        logger.info(min_x_regret)
         return choesn_idxs

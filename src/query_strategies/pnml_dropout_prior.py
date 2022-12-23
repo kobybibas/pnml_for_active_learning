@@ -74,11 +74,20 @@ class DropoutPnml(Strategy):
             log_probs[:num_candidates],
             log_probs[num_candidates:],
         )
+        probs_candidates = probs[:num_candidates]
         probs_test = probs[num_candidates:]
 
         # Calculate log_probs_candidates + log_probs_test
         a, b = torch.meshgrid(log_probs_candidates.flatten(), log_probs_test.flatten())
         scores = (a + b).reshape(num_candidates, num_labels, num_test, num_labels)
+
+        # for i in torch.unique(self.dataset.Y_train):
+        #     prob_pred_, class_pred_ = probs_candidates[
+        #         i == self.dataset.Y_train[self.candidate_idxs_b]
+        #     ].max(-1)
+        #     prob_pred_ = prob_pred_.mean().item()
+        #     class_preds = class_pred_.bincount()
+        #     logger.info(f"Class {i}: {prob_pred_=:.3f} {class_preds=}")
         return probs_test, scores
 
     def calc_test_batch_regret(self, net, x_candidates, x_test):
@@ -116,6 +125,9 @@ class DropoutPnml(Strategy):
             # Regret for each test sample
             regrets_i = max_probs.sum(axis=-1).log()
             regrets.append(regrets_i)
+
+            self.candidate_idxs_b
+            self.dataset.Y_train[self.candidate_idxs_b]
         regrets = torch.cat(regrets, -1)
         return regrets
 
@@ -123,6 +135,7 @@ class DropoutPnml(Strategy):
         net.train()
         regrets, candidate_idxs = [], []
         for x_candidates, _, candidate_idxs_b in tqdm(candidate_loader, desc="Query"):
+            self.candidate_idxs_b = candidate_idxs_b
             batch_regrets = self.iterate_test_loader(net, test_loader, x_candidates)
             regrets.append(batch_regrets)
             candidate_idxs.append(candidate_idxs_b)
@@ -133,13 +146,13 @@ class DropoutPnml(Strategy):
         regrets = torch.cat(regrets, -1).mean(axis=-1)
 
         # Multiple by prior
-        net.eval()
-        priors = []
-        for x_candidates, _, _ in tqdm(candidate_loader, desc="Query"):
-            preds, _ = net(x_candidates, temperature=self.temperature)
-            priors.append(preds.cpu())
-        priors = 1 - torch.cat(priors, -1).softmax(-1)
-        regrets = priors * regrets
+        # net.eval()
+        # priors = []
+        # for x_candidates, _, _ in tqdm(candidate_loader, desc="Query"):
+        #     preds, _ = net(x_candidates, temperature=self.temperature)
+        #     priors.append(preds.cpu())
+        # priors = 1 - torch.cat(priors, -1).softmax(-1)
+        # regrets = priors * regrets
         return regrets, candidate_idxs
 
     def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
@@ -160,17 +173,48 @@ class DropoutPnml(Strategy):
         torch.set_grad_enabled(False)
 
         # Datasets
+        self.dataset = dataset
         candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
 
-        self.temperature = net.calibrate(val_loader)
-        wandb.log({"temperature": self.temperature})
-        logger.info(f"Temperature: {self.temperature}")
+        # self.temperature = net.calibrate(val_loader)
+        # wandb.log({"temperature": self.temperature})
+        # logger.info(f"Temperature: {self.temperature}")
 
         # Inference
         regrets, candidate_idxs = self.iterate_candidate_loader(
             net, candidate_loader, test_loader
         )
 
+        max_regret, _ = regrets.max(axis=-1)
+        mean_regret = regrets.mean(axis=-1)
+        min_regret, _ = regrets.min(axis=-1)
+        unlabled_labels = self.dataset.Y_train[candidate_idxs]
+
+        for i in torch.unique(unlabled_labels):
+            str_i = (
+                f"max_regret_of_{i}={max_regret[unlabled_labels == i].mean().item()}"
+            )
+            logger.info(str_i)
+
+        for i in torch.unique(unlabled_labels):
+            str_i = (
+                f"mean_regret_of_{i}={mean_regret[unlabled_labels == i].mean().item()}"
+            )
+            logger.info(str_i)
+            logger.info(str_i)
+
+        for i in torch.unique(unlabled_labels):
+            str_i = (
+                f"min_regret_of_{i}={min_regret[unlabled_labels == i].mean().item()}"
+            )
+            logger.info(str_i)
+
         choesn_idxs = self.regert_best_selection(regrets, candidate_idxs, dataset, n)
+
+        max_y_regret, max_y_idx = regrets.max(axis=-1)
+        min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
+        logger.info(unlabled_labels[min_x_idx])
+        logger.info(min_x_regret)
+
         torch.set_grad_enabled(True)
         return choesn_idxs

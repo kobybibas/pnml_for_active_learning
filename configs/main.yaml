@@ -6,7 +6,7 @@ defaults:
 seed: 1234
 data_dir: ../data
 
-n_init_labeled: 20 # Number of init labeled samples. Default 10000
+n_init_labeled: 150 # Number of init labeled samples. Default 10000
 n_query: 1 # Number of queries per round. Default 1000
 n_round: 300 # Number of rounds. Default 10
 dataset_name: MNIST_OOD # "MNIST", "MNIST_OOD", "EMNIST", "FashionMNIST", "SVHN", "CIFAR10" "CINIC10"
@@ -14,7 +14,7 @@ strategy_name: DropoutPnml #  "DropoutPnml", DropoutGenie "SingleLayerPnml",  "R
 validation_set_size: 1024
 
 # Active learning inference
-n_drop: 8
+n_drop: 10
 query_batch_size: 256
 unlabeled_pool_size: 255
 test_set_size: 512
