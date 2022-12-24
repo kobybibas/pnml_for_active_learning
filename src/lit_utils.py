@@ -5,14 +5,11 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from omegaconf import DictConfig
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint)
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics.functional import accuracy
-from omegaconf import DictConfig, OmegaConf
-from pytorch_lightning.callbacks import (
-    EarlyStopping,
-    LearningRateMonitor,
-    ModelCheckpoint,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +55,7 @@ def initalize_trainer(
 
 
 class LitClassifier(pl.LightningModule):
-    def __init__(self, net, cfg, device: str, class_weight: torch.Tensor = None):
+    def __init__(self, net, cfg, device: str):
         self.cfg = cfg
         self.device_ = device
         self.save_hyperparameters()
@@ -68,7 +65,7 @@ class LitClassifier(pl.LightningModule):
         self.clf = net(cfg)
 
         # Loss
-        self.criterion = nn.CrossEntropyLoss(weight=class_weight)
+        self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x, temperature=1.0):
         return self.clf(x, temperature=temperature)

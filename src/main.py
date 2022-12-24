@@ -60,10 +60,7 @@ def execute_active_learning(cfg: DictConfig):
         t1 = time.time()
         is_debug = rd == 0
 
-        class_weight = dataset.get_labeled_labels().cpu()
-        class_weight = class_weight[class_weight != -1]
-        class_weight = 1 / torch.bincount(class_weight)
-        lit_h = LitClassifier(net, cfg, device, class_weight)
+        lit_h = LitClassifier(net, cfg, device)
         trainer, checkpoint_callback = initalize_trainer(
             cfg,
             wandb_logger,

@@ -5,21 +5,15 @@ from typing import Tuple
 
 import numpy as np
 import torch
+import wandb
 from torch.nn.functional import cross_entropy
 from torch.utils import data as data
-from torch.utils.data import (
-    DataLoader,
-    Dataset,
-    Subset,
-    TensorDataset,
-    WeightedRandomSampler,
-)
+from torch.utils.data import (DataLoader, Dataset, Subset, TensorDataset,
+                              WeightedRandomSampler)
+from torchsampler import ImbalancedDatasetSampler
 from torchvision import datasets, transforms
-from tqdm import tqdm
-import skimage as sk
-from skimage import transform
 from torchvision.utils import make_grid
-import wandb
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -448,10 +442,17 @@ def get_CINIC10(
 def get_dataloaders(
     dataset, batch_size: int
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
+
+    train_labels = dataset.get_labeled_labels().cpu()
+    train_labels = train_labels[train_labels != -1]
+
     train_dataset = dataset.get_labeled_data()[-1]
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        sampler=RandomFixedLengthSampler(train_dataset, 5056),
+        sampler=ImbalancedDatasetSampler(
+            train_dataset, labels=train_labels, num_samples=5056
+        ),
+        # sampler=RandomFixedLengthSampler(train_dataset, 5056, class_weight),
         batch_size=batch_size,
         num_workers=0,
     )  # Align with https://github.com/BlackHC/BatchBALD/blob/3cb37e9a8b433603fc267c0f1ef6ea3b202cfcb0/src/run_experiment.py#L205
@@ -477,10 +478,11 @@ class RandomFixedLengthSampler(data.Sampler):
     This sampler takes a `dataset` and draws `target_length` samples from it (with repetition).
     """
 
-    def __init__(self, dataset: data.Dataset, target_length):
+    def __init__(self, dataset: data.Dataset, target_length, class_weight):
         super().__init__(dataset)
         self.dataset = dataset
         self.target_length = target_length
+        self.class_weight = class_weight
 
     def __iter__(self):
         # Ensure that we don't lose data by accident.

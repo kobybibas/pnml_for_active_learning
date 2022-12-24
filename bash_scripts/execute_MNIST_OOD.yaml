@@ -4,7 +4,7 @@ windows:
           shell_command_before:
                   - cd ../src
                   - conda activate pnml_for_active_learning
-                  - export WANDB_GROUP_ID=BALANCED_Y
+                  - export WANDB_GROUP_ID=SAMPLER_BALANCED_Y
           panes:
                   - shell_command:
                             - sleep 0
