@@ -1,6 +1,5 @@
 import logging
 import time
-from os.path import join as osj
 from typing import Tuple
 
 import numpy as np
@@ -8,27 +7,31 @@ import torch
 import wandb
 from torch.nn.functional import cross_entropy
 from torch.utils import data as data
-from torch.utils.data import (DataLoader, Dataset, Subset, TensorDataset,
-                              WeightedRandomSampler)
-from torchsampler import ImbalancedDatasetSampler
+from torch.utils.data import DataLoader, Subset, TensorDataset
 from torchvision import datasets, transforms
 from torchvision.utils import make_grid
-from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
 
-def wandb_mnist_plot_images(data_tensor, title="MNIST Images"):
-    perm = torch.randperm(data_tensor.size(0))
-    idx = perm[:64]
-    image_array = make_grid(
-        data_tensor[idx].unsqueeze(1),
-        nrow=8,
-        padding=2,
-        pad_value=0,
-    )
-    images = wandb.Image(image_array)
-    wandb.log({title: images})
+mnist_transforms = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+)
+fashion_mnist_transforms = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.2860,), (0.3530,))]
+)
+svhn_transforms = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize((0.4377, 0.4438, 0.4728), (0.1980, 0.2010, 0.1970)),
+    ]
+)
+cifar10_transforms = transforms.Compose(
+    [
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2470, 0.2435, 0.2616)),
+    ]
+)
 
 
 class Data:
@@ -40,24 +43,24 @@ class Data:
         Y_val,
         X_test,
         Y_test,
-        handler: Dataset,
-        device: str = None,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         t0 = time.time()
-        self.handler = handler
 
         self.device = device
-        if self.device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
         self.n_pool, self.n_val, self.n_test = len(X_train), len(X_val), len(X_test)
         self.labeled_idxs = np.zeros(self.n_pool, dtype=bool)
 
+        # Plot x5
+        for _ in range(5):
+            wandb_mnist_plot_images(X_train, title="Training set")
+            wandb_mnist_plot_images(X_val, title="Validation set")
+            wandb_mnist_plot_images(X_test, title="Test set")
+
         # Propogate trought dataloader to have vectors transformed vectors to the experimnet
-        self.X_train_org = X_train
-        self.X_train, self.Y_train = self.transfor_set(X_train, Y_train, self.device)
-        self.X_val, self.Y_val = self.transfor_set(X_val, Y_val, self.device)
-        self.X_test, self.Y_test = self.transfor_set(X_test, Y_test, self.device)
+        self.X_train, self.Y_train = X_train.to(self.device), Y_train.to(self.device)
+        self.X_val, self.Y_val = X_val.to(self.device), Y_val.to(self.device)
+        self.X_test, self.Y_test = X_test.to(self.device), Y_test.to(self.device)
 
         self.train_dataset = TensorDataset(
             self.X_train,
@@ -80,22 +83,6 @@ class Data:
         logger.info(f"Test. [Data Labels]=[{self.X_test.shape} {self.Y_test.shape}]")
         logger.info(f"Data __init__ in {time.time()-t0:.1f} sec")
 
-    def transfor_set(
-        self, x_data: torch.Tensor, y_labels: torch.Tensor, device: str
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        dataset_h = self.handler(x_data, torch.tensor(y_labels).unsqueeze(1))
-        loader = DataLoader(dataset_h, shuffle=False, batch_size=128, num_workers=0)
-
-        X_transformed, Y_transformed = [], []
-        for x, y, _ in tqdm(loader):
-            X_transformed.append(x)
-            Y_transformed.append(y)
-
-        X_transformed = torch.vstack(X_transformed).to(device)
-        Y_transformed = torch.vstack(Y_transformed).squeeze().to(device)
-
-        return X_transformed, Y_transformed
-
     def initialize_labels(self, num: int):
         # Generate initial labeled pool. Make sure equal number of labels in each class
         num_labels = len(self.Y_train.unique())
@@ -110,8 +97,7 @@ class Data:
 
     def get_labeled_data(self) -> Tuple[np.array, Subset]:
         labeled_idxs = np.arange(self.n_pool)[
-            self.labeled_idxs
-            & (self.Y_train.cpu().numpy() != -1)  # TODO: OOD make more elegant
+            self.labeled_idxs & (self.Y_train.cpu().numpy() != -1)
         ]
         return labeled_idxs, Subset(self.train_dataset, labeled_idxs)
 
@@ -122,7 +108,7 @@ class Data:
     def get_train_data(self) -> Tuple[np.array, TensorDataset]:
         return self.labeled_idxs.copy(), self.train_dataset
 
-    def get_val_data(self) -> Tuple[np.array, TensorDataset]:
+    def get_val_data(self) -> TensorDataset:
         return self.val_dataset
 
     def get_test_data(self) -> TensorDataset:
@@ -134,32 +120,74 @@ class Data:
     def cal_test_loss(self, probs: torch.Tensor) -> float:
         return cross_entropy(probs, self.Y_test.to(probs.device)).item()
 
+    def count_ind_training_labels(self) -> torch.Tensor:
+        training_labels = self.get_labeled_labels().cpu()
+        training_labels = training_labels[training_labels != -1]
+        label_counts = torch.tensor(
+            [
+                torch.sum(training_labels == label)
+                for label in torch.unique(training_labels)
+            ]
+        )
+        return label_counts
 
-# TODO: constrain as argument
+
+def wandb_mnist_plot_images(data_tensor, title="MNIST Images"):
+    perm = torch.randperm(data_tensor.size(0))
+    idx = perm[:64]
+    image_array = make_grid(
+        data_tensor[idx],
+        nrow=8,
+        padding=2,
+        pad_value=0,
+    )
+    images = wandb.Image(image_array)
+    wandb.log({title: images})
+
+
 def extract_dataset_to_tensors(
-    raw_dataset: torch.utils.data.Dataset, constrain: int = 10000
+    raw_dataset: torch.utils.data.Dataset, limit: int = 10000
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    data_list, target_list = [], []
+    data, targets = [], []
     for x, y in raw_dataset:
-        data_list.append(x)
-        target_list.append(y)
-    data_list = torch.vstack(data_list)
-    return data_list[:constrain], torch.tensor(target_list)[:constrain]
+        data.append(x)
+        targets.append(y)
+    data = torch.vstack(data)[:limit]
+    targets = torch.tensor(targets)[:limit]
+
+    if len(data.shape) == 3:
+        # For MNIST like dataset, add channel dimension
+        data = data.unsqueeze(1)
+    return data, targets
+
+
+def execute_train_val_split(
+    train_data: torch.Tensor,
+    train_targets: torch.Tensor,
+    validation_set_size: int = 1024,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    val_data = torch.vstack(train_data[-validation_set_size:])
+    val_targets = train_targets[-validation_set_size:]
+    train_data = torch.vstack(train_data[:-validation_set_size])
+    train_targets = train_targets[:-validation_set_size]
+    return train_data, train_targets, val_data, val_targets
 
 
 def get_MNIST(
-    handler, data_dir: str = "../data", validation_set_size: int = 1024
+    data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
-    raw_train = datasets.MNIST(data_dir, train=True, download=True)
-    raw_test = datasets.MNIST(data_dir, train=False, download=True)
+    raw_train = datasets.MNIST(
+        data_dir, train=True, download=True, transform=mnist_transforms
+    )
+    raw_test = datasets.MNIST(
+        data_dir, train=False, download=True, transform=mnist_transforms
+    )
 
-    train_data = raw_train.data[:-validation_set_size]
-    train_targets = raw_train.targets[:-validation_set_size]
-    val_data = raw_train.data[-validation_set_size:]
-    val_targets = raw_train.targets[-validation_set_size:]
-    test_data = raw_test.data
-    test_targets = raw_test.targets
-
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, validation_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
     return Data(
         train_data,
         train_targets,
@@ -167,25 +195,16 @@ def get_MNIST(
         val_targets,
         test_data,
         test_targets,
-        handler,
     )
 
 
 def get_MNIST_C(
-    handler, data_dir: str = "../data", validation_set_size: int = 1024
+    data_dir: str = "../data",
+    validation_set_size: int = 1024,
+    dataset_limit: int = -1,
 ) -> Data:
+
     raw_train = datasets.MNIST(
-        data_dir,
-        train=True,
-        download=True,
-        transform=transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]
-        ),
-    )
-    raw_test = datasets.MNIST(
         data_dir,
         train=False,
         download=True,
@@ -197,21 +216,16 @@ def get_MNIST_C(
             ]
         ),
     )
-    train_data, train_targets = [], []
-    for x, y in raw_train:
-        train_data.append(x)
-        train_targets.append(y)
 
-    val_data = torch.vstack(train_data[-validation_set_size:])
-    val_targets = train_targets[-validation_set_size:]
-    train_data = torch.vstack(train_data[:-validation_set_size])
-    train_targets = train_targets[:-validation_set_size]
+    raw_test = datasets.MNIST(
+        data_dir, train=False, download=True, transform=mnist_transforms
+    )
 
-    test_data, test_targets = [], []
-    for x, y in raw_test:
-        test_data.append(x)
-        test_targets.append(y)
-    test_data = torch.vstack(test_data)
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, validation_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
 
     # Plot x5
     for _ in range(5):
@@ -225,12 +239,11 @@ def get_MNIST_C(
         val_targets,
         test_data,
         test_targets,
-        handler,
     )
 
 
 def get_MNIST_OOD(
-    handler, data_dir: str = "../data", validation_set_size: int = 1024
+    data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
 
     # Train set
@@ -238,33 +251,23 @@ def get_MNIST_OOD(
         data_dir,
         train=True,
         download=True,
-        transform=transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]
-        ),
+        transform=mnist_transforms,
     )
 
     raw_ood = datasets.FashionMNIST(
         data_dir,
         train=False,
         download=True,
-        transform=transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]
-        ),
+        transform=mnist_transforms,
     )
 
-    train_data, train_targets = extract_dataset_to_tensors(raw_train)
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
     val_data = train_data[-validation_set_size:]
     val_targets = train_targets[-validation_set_size:]
     train_data = train_data[:-validation_set_size]
     train_targets = train_targets[:-validation_set_size]
 
-    ood_data, _ = extract_dataset_to_tensors(raw_ood)
+    ood_data, _ = extract_dataset_to_tensors(raw_ood, dataset_limit)
     train_data = torch.vstack((train_data, ood_data))
     train_targets = torch.hstack(
         (train_targets, -1 * torch.ones(ood_data.shape[0]))
@@ -275,19 +278,9 @@ def get_MNIST_OOD(
         data_dir,
         train=False,
         download=True,
-        transform=transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]
-        ),
+        transform=mnist_transforms,
     )
-    test_data, test_targets = extract_dataset_to_tensors(raw_test)
-
-    # Plot x5
-    for _ in range(5):
-        wandb_mnist_plot_images(train_data, title="Training set")
-        wandb_mnist_plot_images(test_data, title="Test set")
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
 
     return Data(
         train_data,
@@ -296,23 +289,20 @@ def get_MNIST_OOD(
         val_targets,
         test_data,
         test_targets,
-        handler,
     )
 
 
 def get_EMNIST(
-    handler, data_dir: str = "../data", validation_set_size: int = 1024
+    data_dir: str = "../data", val_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
     raw_train = datasets.EMNIST(data_dir, split="balanced", train=True, download=True)
     raw_test = datasets.EMNIST(data_dir, split="balanced", train=False, download=True)
 
-    train_data = raw_train.data[:-validation_set_size]
-    train_targets = raw_train.targets[:-validation_set_size]
-    val_data = raw_train.data[-validation_set_size:]
-    val_targets = raw_train.targets[-validation_set_size:]
-    test_data = raw_test.data
-    test_targets = raw_test.targets
-
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, val_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
     return Data(
         train_data,
         train_targets,
@@ -320,48 +310,77 @@ def get_EMNIST(
         val_targets,
         test_data,
         test_targets,
-        handler,
     )
 
 
-def get_FashionMNIST(handler, data_dir: str = "../data") -> Data:
-    raw_train = datasets.FashionMNIST(data_dir, train=True, download=True)
-    raw_test = datasets.FashionMNIST(data_dir, train=False, download=True)
+def get_FashionMNIST(
+    data_dir: str = "../data",
+    val_set_size: int = 1024,
+    dataset_limit: int = -1,
+) -> Data:
+    raw_train = datasets.FashionMNIST(
+        data_dir, train=True, download=True, transform=fashion_mnist_transforms
+    )
+    raw_test = datasets.FashionMNIST(
+        data_dir, train=False, download=True, transform=fashion_mnist_transforms
+    )
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, val_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
     return Data(
-        raw_train.data[:40000],
-        raw_train.targets[:40000],
-        raw_test.data[:40000],
-        raw_test.targets[:40000],
-        handler,
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
     )
 
 
-def get_SVHN(handler, data_dir: str = "../data") -> Data:
-    data_train = datasets.SVHN(data_dir, split="train", download=True)
-    data_test = datasets.SVHN(data_dir, split="test", download=True)
+def get_SVHN(
+    data_dir: str = "../data",
+    val_set_size: int = 1024,
+    dataset_limit: int = -1,
+) -> Data:
+    raw_train = datasets.SVHN(
+        data_dir, split="train", download=True, transform=svhn_transforms
+    )
+    raw_test = datasets.SVHN(
+        data_dir, split="test", download=True, transform=svhn_transforms
+    )
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, val_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
     return Data(
-        data_train.data[:40000],
-        torch.from_numpy(data_train.labels)[:40000],
-        data_test.data[:40000],
-        torch.from_numpy(data_test.labels)[:40000],
-        handler,
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
     )
 
 
 def get_CIFAR10(
-    handler, data_dir: str = "../data", validation_set_size: int = 1024
+    data_dir: str = "../data", val_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
 
-    raw_train = datasets.CIFAR10(data_dir, train=True, download=True)
-    raw_test = datasets.CIFAR10(data_dir, train=False, download=True)
+    raw_train = datasets.CIFAR10(
+        data_dir, train=True, download=True, transform=cifar10_transforms
+    )
+    raw_test = datasets.CIFAR10(
+        data_dir, train=False, download=True, transform=cifar10_transforms
+    )
 
-    train_data = raw_train.data[:-validation_set_size]
-    train_targets = raw_train.targets[:-validation_set_size]
-    val_data = raw_train.data[-validation_set_size:]
-    val_targets = raw_train.targets[-validation_set_size:]
-    test_data = raw_test.data
-    test_targets = raw_test.targets
-
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, val_set_size
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
     return Data(
         train_data,
         train_targets,
@@ -369,73 +388,6 @@ def get_CIFAR10(
         val_targets,
         test_data,
         test_targets,
-        handler,
-    )
-
-
-def get_CINIC10(
-    handler,
-    data_dir: str = "../data",
-    train_set_size: int = 10000,  # TODO 160K
-    val_set_size: int = 1000,  # TODO 20K
-    test_set_size: int = 10000,  # TODO 90K
-) -> Data:
-
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.47889522, 0.47227842, 0.43047404],
-                std=[0.24205776, 0.23828046, 0.25874835],
-            ),
-        ]
-    )
-
-    train_set = datasets.ImageFolder(
-        root=osj(data_dir, "cinic-10", "train"), transform=transform
-    )
-    val_set = datasets.ImageFolder(
-        root=osj(data_dir, "cinic-10", "valid"), transform=transform
-    )
-    test_set = datasets.ImageFolder(
-        root=osj(data_dir, "cinic-10", "test"), transform=transform
-    )
-
-    indices = torch.randperm(len(test_set))[:train_set_size]
-    train_data, train_targets = [], []
-    for idx in tqdm(indices):
-        img, label = train_set[idx]
-        train_data.append(img)
-        train_targets.append(label)
-    train_data = torch.stack(train_data)
-    train_targets = torch.tensor(train_targets)
-
-    indices = torch.randperm(len(val_set))[:val_set_size]
-    val_data, val_targets = [], []
-    for idx in tqdm(indices):
-        img, label = val_set[idx]
-        val_data.append(img)
-        val_targets.append(label)
-    val_data = torch.stack(val_data)
-    val_targets = torch.tensor(val_targets)
-
-    indices = torch.randperm(len(test_set))[:test_set_size]
-    test_data, test_targets = [], []
-    for idx in indices:
-        img, label = test_set[idx]
-        test_data.append(img)
-        test_targets.append(label)
-    test_data = torch.stack(test_data)
-    test_targets = torch.tensor(test_targets)
-
-    return Data(
-        train_data,
-        train_targets,
-        val_data,
-        val_targets,
-        test_data,
-        test_targets,
-        handler,
     )
 
 
@@ -449,10 +401,7 @@ def get_dataloaders(
     train_dataset = dataset.get_labeled_data()[-1]
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        sampler=ImbalancedDatasetSampler(
-            train_dataset, labels=train_labels, num_samples=5056
-        ),
-        # sampler=RandomFixedLengthSampler(train_dataset, 5056, class_weight),
+        sampler=RandomFixedLengthSampler(train_dataset, 5056),
         batch_size=batch_size,
         num_workers=0,
     )  # Align with https://github.com/BlackHC/BatchBALD/blob/3cb37e9a8b433603fc267c0f1ef6ea3b202cfcb0/src/run_experiment.py#L205
@@ -478,11 +427,10 @@ class RandomFixedLengthSampler(data.Sampler):
     This sampler takes a `dataset` and draws `target_length` samples from it (with repetition).
     """
 
-    def __init__(self, dataset: data.Dataset, target_length, class_weight):
+    def __init__(self, dataset: data.Dataset, target_length):
         super().__init__(dataset)
         self.dataset = dataset
         self.target_length = target_length
-        self.class_weight = class_weight
 
     def __iter__(self):
         # Ensure that we don't lose data by accident.

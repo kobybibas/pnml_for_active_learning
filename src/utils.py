@@ -1,26 +1,18 @@
 from data import (
     get_CIFAR10,
-    get_CINIC10,
     get_EMNIST,
     get_FashionMNIST,
     get_MNIST,
-    get_SVHN,
     get_MNIST_C,
     get_MNIST_OOD,
+    get_SVHN,
 )
-from handlers import CIFAR10_Handler, CINIC10_Handler, MNIST_Handler, SVHN_Handler
-from nets import (
-    CIFAR10_Net,
-    CINIC10_Net,
-    EMNIST_Net,
-    MNIST_Net,
-    SVHN_Net,
-    MNIST_OOD_Net,
-)
+from nets import CIFAR10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
 from query_strategies import (
     AdversarialBIM,
     AdversarialDeepFool,
     BALDDropout,
+    DropoutGenie,
     DropoutPnml,
     EntropySampling,
     EntropySamplingDropout,
@@ -31,68 +23,43 @@ from query_strategies import (
     MarginSampling,
     MarginSamplingDropout,
     RandomSampling,
-    DropoutGenie,
 )
 from query_strategies.strategy import Strategy
 
 
-def get_handler(name):
+def get_dataset(
+    name: str,
+    data_dir: str = "../data",
+    val_set_size: int = 1024,
+    dataset_limit: int = -1,
+):
     if name == "MNIST":
-        return MNIST_Handler
+        return get_MNIST(data_dir, val_set_size, dataset_limit)
     elif name == "MNIST_C":
-        return MNIST_Handler
+        return get_MNIST_C(data_dir, val_set_size, dataset_limit)
     elif name == "MNIST_OOD":
-        return MNIST_Handler
+        return get_MNIST_OOD(data_dir, val_set_size, dataset_limit)
     elif name == "EMNIST":
-        return MNIST_Handler
+        return get_EMNIST(data_dir, val_set_size, dataset_limit)
     elif name == "FashionMNIST":
-        return MNIST_Handler
+        return get_FashionMNIST(data_dir, val_set_size, dataset_limit)
     elif name == "SVHN":
-        return SVHN_Handler
+        return get_SVHN(data_dir, val_set_size, dataset_limit)
     elif name == "CIFAR10":
-        return CIFAR10_Handler
-    elif name == "CINIC10":
-        return CINIC10_Handler
-
-
-def get_dataset(name: str, data_dir: str = "../data", validation_set_size: int = 1024):
-    if name == "MNIST":
-        return get_MNIST(get_handler(name), data_dir, validation_set_size)
-    elif name == "MNIST_C":
-        return get_MNIST_C(get_handler(name), data_dir, validation_set_size)
-    elif name == "MNIST_OOD":
-        return get_MNIST_OOD(get_handler(name), data_dir, validation_set_size)
-    elif name == "EMNIST":
-        return get_EMNIST(get_handler(name), data_dir, validation_set_size)
-    elif name == "FashionMNIST":
-        return get_FashionMNIST(get_handler(name), data_dir)
-    elif name == "SVHN":
-        return get_SVHN(get_handler(name), data_dir)
-    elif name == "CIFAR10":
-        return get_CIFAR10(get_handler(name), data_dir)
-    elif name == "CINIC10":
-        return get_CINIC10(get_handler(name), data_dir)
+        return get_CIFAR10(data_dir, val_set_size, dataset_limit)
     else:
         raise NotImplementedError
 
 
 def get_net(name):
-    if name == "MNIST":
-        return MNIST_Net
-    elif name == "MNIST_C":
+    if name in ("MNIST", "MNIST_C", "MNIST_OOD", "FashionMNIST"):
         return MNIST_Net
     elif name == "EMNIST":
         return EMNIST_Net
-    elif name == "FashionMNIST":
-        return MNIST_Net
     elif name == "SVHN":
         return SVHN_Net
     elif name == "CIFAR10":
         return CIFAR10_Net
-    elif name == "CINIC10":
-        return CINIC10_Net
-    elif name == "MNIST_OOD":
-        return MNIST_OOD_Net
     else:
         raise NotImplementedError
 

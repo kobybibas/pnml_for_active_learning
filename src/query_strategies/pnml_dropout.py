@@ -24,6 +24,7 @@ class DropoutPnml(Strategy):
         self.unlabeled_pool_size = unlabeled_pool_size
         self.test_set_size = test_set_size
         self.temperature = 1.0
+        self.is_calibrate = False
 
     def build_dataloaders(self, dataset):
         # Candidate set
@@ -133,6 +134,13 @@ class DropoutPnml(Strategy):
     def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
         max_y_regret, max_y_idx = mean_regrets.max(axis=-1)
         min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
+        choesn_idxs = idx_candidates[min_x_idx[:n]]
+
+        # For debug:
+        unlabled_labels = dataset.Y_train
+        logger.info(f"Sorted true label {unlabled_labels[idx_candidates[min_x_idx]]}")
+        logger.info(min_x_regret)
+        logger.info(f"{unlabled_labels[choesn_idxs]=}")
 
         wandb.log(
             {
@@ -142,7 +150,17 @@ class DropoutPnml(Strategy):
             }
         )
 
-        return idx_candidates[min_x_idx[:n]]
+        return choesn_idxs
+
+    def dataloader_inference(self, net, dataloader):
+        net.eval()
+        preds = []
+        for x, _, _ in dataloader:
+            x = x.to(net.device)
+            pred, _ = net(x, temperature=self.temperature)
+            preds.append(pred.cpu())
+        preds = torch.cat(preds, 0).softmax(-1)
+        return preds
 
     def query(self, n, net, dataset):
         torch.set_grad_enabled(False)
@@ -150,9 +168,10 @@ class DropoutPnml(Strategy):
         # Datasets
         candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
 
-        # self.temperature = net.calibrate(val_loader)
-        # wandb.log({"temperature": self.temperature})
-        # logger.info(f"Temperature: {self.temperature}")
+        if self.is_calibrate:
+            self.temperature = net.calibrate(val_loader)
+            wandb.log({"temperature": self.temperature})
+            logger.info(f"Temperature: {self.temperature}")
 
         # Inference
         regrets, candidate_idxs = self.iterate_candidate_loader(
@@ -161,11 +180,4 @@ class DropoutPnml(Strategy):
 
         choesn_idxs = self.regert_best_selection(regrets, candidate_idxs, dataset, n)
         torch.set_grad_enabled(True)
-
-        # For debug:
-        unlabled_labels = dataset.Y_train
-        max_y_regret, _ = regrets.max(axis=-1)
-        min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
-        logger.info(unlabled_labels[min_x_idx])
-        logger.info(min_x_regret)
         return choesn_idxs

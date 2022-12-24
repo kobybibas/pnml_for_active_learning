@@ -41,7 +41,9 @@ def execute_active_learning(cfg: DictConfig):
     logger.info(cfg)
 
     # Load dataset
-    dataset = get_dataset(cfg.dataset_name, cfg.data_dir, cfg.validation_set_size)
+    dataset = get_dataset(
+        cfg.dataset_name, cfg.data_dir, cfg.val_set_size, cfg.dataset_limit
+    )
     net = get_net(cfg.dataset_name)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -106,14 +108,14 @@ def execute_active_learning(cfg: DictConfig):
                 for label in np.arange(training_labels.min(), training_labels.max(), 1)
             }
         )
-        if True:
-            imgs = dataset.X_train_org[query_idxs]
-            image_array = make_grid(
-                imgs,
-                nrow=1,
-            )
-            images = wandb.Image(image_array)
-            wandb.log({"Queried images": images})
+
+        # Plot queried image
+        imgs = dataset.X_train[query_idxs].cpu()
+        image_array = make_grid(
+            imgs,
+            nrow=1,
+        )
+        wandb.log({"Queried images": wandb.Image(image_array)})
 
     logger.info(f"Finish in {time.time()-t0:.1f} sec")
 
