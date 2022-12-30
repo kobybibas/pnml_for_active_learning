@@ -62,7 +62,7 @@ def get_net(name):
         return EMNIST_Net
     elif name == "SVHN":
         return SVHN_Net
-    elif name == "CIFAR10":
+    elif name in ("CIFAR10", "CIFAR10_OOD"):
         return CIFAR10_Net
     else:
         raise NotImplementedError

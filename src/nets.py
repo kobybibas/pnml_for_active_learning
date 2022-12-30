@@ -168,7 +168,9 @@ class BasicBlock(nn.Module):
 def CIFAR10_Net(cfg):
     resnet18_handle = resnet18(pretrained=True, progress=True)
 
-    def forward_with_dropout(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_with_dropout(
+        self, x: torch.Tensor, temperature: float = 1.0
+    ) -> torch.Tensor:
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -183,9 +185,9 @@ def CIFAR10_Net(cfg):
         x = self.layer4(x)
 
         x = self.avgpool(x)
-        e = torch.flatten(x, 1)
-        y = torch.nn.functional.dropout(e, p=cfg.dropout, training=self.training)
-        y = self.fc(y)
+        x = torch.flatten(x, 1)
+        e = torch.nn.functional.dropout(x, p=cfg.dropout, training=self.training)
+        y = self.fc(e / temperature)
 
         return y, e
 

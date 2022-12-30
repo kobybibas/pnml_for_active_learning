@@ -150,14 +150,10 @@ def extract_dataset_to_tensors(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     data, targets = [], []
     for x, y in raw_dataset:
-        data.append(x)
+        data.append(x.unsqueeze(0))
         targets.append(y)
     data = torch.vstack(data)[:limit]
     targets = torch.tensor(targets)[:limit]
-
-    if len(data.shape) == 3:
-        # For MNIST like dataset, add channel dimension
-        data = data.unsqueeze(1)
     return data, targets
 
 
@@ -398,7 +394,7 @@ def get_CIFAR10_OOD(
 
     raw_ood = datasets.SVHN(
         data_dir,
-        train=False,
+        split="train",
         download=True,
         transform=cifar10_transforms,
     )
