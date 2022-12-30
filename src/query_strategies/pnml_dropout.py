@@ -23,7 +23,7 @@ class DropoutPnml(Strategy):
         self.batch_size = query_batch_size
         self.unlabeled_pool_size = unlabeled_pool_size
         self.test_set_size = test_set_size
-        self.temperature = 1.0
+        self.temperature = 5.0
         self.is_calibrate = False
 
     def build_dataloaders(self, dataset):
@@ -131,7 +131,7 @@ class DropoutPnml(Strategy):
         regrets = torch.cat(regrets, -1).mean(axis=-1)
         return regrets, candidate_idxs
 
-    def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
+    def regert_based_selection(self, mean_regrets, idx_candidates, dataset, n):
         max_y_regret, max_y_idx = mean_regrets.max(axis=-1)
         min_x_regret, min_x_idx = max_y_regret.sort(descending=False, axis=-1)
         choesn_idxs = idx_candidates[min_x_idx[:n]]
@@ -139,7 +139,8 @@ class DropoutPnml(Strategy):
         # For debug:
         unlabled_labels = dataset.Y_train
         logger.info(f"Sorted true label {unlabled_labels[idx_candidates[min_x_idx]]}")
-        logger.info(min_x_regret)
+        logger.info(f"{min_x_regret=}")
+        logger.info(f"{max_y_idx=}")
         logger.info(f"{unlabled_labels[choesn_idxs]=}")
 
         wandb.log(
@@ -170,14 +171,18 @@ class DropoutPnml(Strategy):
 
         if self.is_calibrate:
             self.temperature = net.calibrate(val_loader)
-            wandb.log({"temperature": self.temperature})
-            logger.info(f"Temperature: {self.temperature}")
+        wandb.log({"temperature": self.temperature})
+        logger.info(f"Temperature: {self.temperature}")
 
         # Inference
         regrets, candidate_idxs = self.iterate_candidate_loader(
             net, candidate_loader, test_loader
         )
 
-        choesn_idxs = self.regert_best_selection(regrets, candidate_idxs, dataset, n)
+        choesn_idxs = self.regert_based_selection(regrets, candidate_idxs, dataset, n)
+
+        candidate_probs = self.dataloader_inference(net, candidate_loader)
+        candidate_max_probs = torch.round(candidate_probs.max(-1)[0], decimals=3)
+        logger.info(f"candidate_max_probs={candidate_max_probs}")
         torch.set_grad_enabled(True)
         return choesn_idxs

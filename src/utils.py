@@ -6,6 +6,7 @@ from data import (
     get_MNIST_C,
     get_MNIST_OOD,
     get_SVHN,
+    get_CIFAR10_OOD,
 )
 from nets import CIFAR10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
 from query_strategies import (
@@ -14,6 +15,7 @@ from query_strategies import (
     BALDDropout,
     DropoutGenie,
     DropoutPnml,
+    DropoutPnmlPrior,
     EntropySampling,
     EntropySamplingDropout,
     KCenterGreedy,
@@ -47,6 +49,8 @@ def get_dataset(
         return get_SVHN(data_dir, val_set_size, dataset_limit)
     elif name == "CIFAR10":
         return get_CIFAR10(data_dir, val_set_size, dataset_limit)
+    elif name == "CIFAR10_OOD":
+        return get_CIFAR10_OOD(data_dir, val_set_size, dataset_limit)
     else:
         raise NotImplementedError
 
@@ -100,6 +104,13 @@ def get_strategy(
         return AdversarialDeepFool()
     elif name == "DropoutPnml":
         return DropoutPnml(
+            n_drop=n_drop,
+            query_batch_size=query_batch_size,
+            unlabeled_pool_size=unlabeled_pool_size,
+            test_set_size=test_set_size,
+        )
+    elif name == "DropoutPnmlPrior":
+        return DropoutPnmlPrior(
             n_drop=n_drop,
             query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,

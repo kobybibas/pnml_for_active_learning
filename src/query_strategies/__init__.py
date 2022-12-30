@@ -12,3 +12,4 @@ from .adversarial_bim import AdversarialBIM
 from .adversarial_deepfool import AdversarialDeepFool
 from .pnml_dropout import DropoutPnml
 from .genie_dropout import DropoutGenie
+from .pnml_prior_dropout import DropoutPnmlPrior

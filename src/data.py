@@ -166,9 +166,9 @@ def execute_train_val_split(
     train_targets: torch.Tensor,
     validation_set_size: int = 1024,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    val_data = torch.vstack(train_data[-validation_set_size:])
+    val_data = train_data[-validation_set_size:]
     val_targets = train_targets[-validation_set_size:]
-    train_data = torch.vstack(train_data[:-validation_set_size])
+    train_data = train_data[:-validation_set_size]
     train_targets = train_targets[:-validation_set_size]
     return train_data, train_targets, val_data, val_targets
 
@@ -227,11 +227,6 @@ def get_MNIST_C(
     )
     test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
 
-    # Plot x5
-    for _ in range(5):
-        wandb_mnist_plot_images(train_data, title="Training set")
-        wandb_mnist_plot_images(test_data, title="Test set")
-
     return Data(
         train_data,
         train_targets,
@@ -262,11 +257,9 @@ def get_MNIST_OOD(
     )
 
     train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
-    val_data = train_data[-validation_set_size:]
-    val_targets = train_targets[-validation_set_size:]
-    train_data = train_data[:-validation_set_size]
-    train_targets = train_targets[:-validation_set_size]
-
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, validation_set_size
+    )
     ood_data, _ = extract_dataset_to_tensors(raw_ood, dataset_limit)
     train_data = torch.vstack((train_data, ood_data))
     train_targets = torch.hstack(
@@ -381,6 +374,54 @@ def get_CIFAR10(
         train_data, train_targets, val_set_size
     )
     test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
+    return Data(
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+    )
+
+
+def get_CIFAR10_OOD(
+    data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
+) -> Data:
+
+    # Train set
+    raw_train = datasets.CIFAR10(
+        data_dir,
+        train=True,
+        download=True,
+        transform=cifar10_transforms,
+    )
+
+    raw_ood = datasets.SVHN(
+        data_dir,
+        train=False,
+        download=True,
+        transform=cifar10_transforms,
+    )
+
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, validation_set_size
+    )
+    ood_data, _ = extract_dataset_to_tensors(raw_ood, dataset_limit)
+    train_data = torch.vstack((train_data, ood_data))
+    train_targets = torch.hstack(
+        (train_targets, -1 * torch.ones(ood_data.shape[0]))
+    ).long()
+
+    # Test set
+    raw_test = datasets.CIFAR10(
+        data_dir,
+        train=False,
+        download=True,
+        transform=cifar10_transforms,
+    )
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
+
     return Data(
         train_data,
         train_targets,

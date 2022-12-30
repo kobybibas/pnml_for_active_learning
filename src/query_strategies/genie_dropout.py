@@ -13,7 +13,7 @@ class DropoutGenie(DropoutPnml):
     Genie that knows the true labels of the unlalbled pool
     """
 
-    def regert_best_selection(self, mean_regrets, idx_candidates, dataset, n):
+    def regert_based_selection(self, mean_regrets, idx_candidates, dataset, n):
 
         assert dataset.labeled_idxs[idx_candidates].sum() == 0
         true_labels = dataset.Y_train[idx_candidates].to(mean_regrets.device)
