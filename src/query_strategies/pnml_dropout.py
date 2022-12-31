@@ -17,13 +17,14 @@ class DropoutPnml(Strategy):
         query_batch_size=256,
         unlabeled_pool_size=256,
         test_set_size: int = 512,
+        temperature: float = 1.0,
     ):
         self.eps = 1e-6
         self.n_drop = n_drop
         self.batch_size = query_batch_size
         self.unlabeled_pool_size = unlabeled_pool_size
         self.test_set_size = test_set_size
-        self.temperature = 5.0
+        self.temperature = temperature
         self.is_calibrate = False
 
     def build_dataloaders(self, dataset):

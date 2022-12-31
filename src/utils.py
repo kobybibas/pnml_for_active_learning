@@ -74,6 +74,7 @@ def get_strategy(
     query_batch_size: int = -1,
     unlabeled_pool_size: int = -1,
     test_set_size: int = -1,
+    temperature: float = 1.0,
 ) -> Strategy:
     if name == "RandomSampling":
         return RandomSampling()
@@ -108,6 +109,7 @@ def get_strategy(
             query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
             test_set_size=test_set_size,
+            temperature=temperature,
         )
     elif name == "DropoutPnmlPrior":
         return DropoutPnmlPrior(
@@ -115,6 +117,7 @@ def get_strategy(
             query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
             test_set_size=test_set_size,
+            temperature=temperature,
         )
     elif name == "DropoutGenie":
         return DropoutGenie(
@@ -122,6 +125,7 @@ def get_strategy(
             query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
             test_set_size=test_set_size,
+            temperature=temperature,
         )
 
     else:

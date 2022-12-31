@@ -1,16 +1,20 @@
 import numpy as np
 from .strategy import Strategy
 from sklearn.cluster import KMeans
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class KMeansSampling(Strategy):
-    def __init__(self, dataset, net):
-        super(KMeansSampling, self).__init__(dataset, net)
+    def __init__(self):
+        super(KMeansSampling, self).__init__()
 
-    def query(self, n):
-        unlabeled_idxs, unlabeled_data = self.dataset.get_unlabeled_data()
-        embeddings = self.get_embeddings(unlabeled_data)
-        embeddings = embeddings.numpy()
+    def query(self, n, net, dataset):
+        logger.info("KMeansSampling")
+        unlabeled_idxs, unlabeled_data = dataset.get_unlabeled_data()
+        embeddings = net.get_embeddings(unlabeled_data)
+        embeddings = embeddings.cpu().numpy()
         cluster_learner = KMeans(n_clusters=n)
         cluster_learner.fit(embeddings)
 
