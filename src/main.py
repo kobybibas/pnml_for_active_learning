@@ -54,6 +54,7 @@ def execute_active_learning(cfg: DictConfig):
         query_batch_size=cfg.query_batch_size,
         unlabeled_pool_size=cfg.unlabeled_pool_size,
         test_set_size=cfg.test_set_size,
+        temperature=cfg.temperature,
     )
 
     # Active learning
