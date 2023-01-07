@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-
+from matplotlib.ticker import FormatStrFormatter
 
 def process_results(run_list, api):
     dfs = []
@@ -58,10 +58,11 @@ def execute_plot(random_res, bald_res, pnml_res, fig, ax):
             max_val, res["mean"].max()
         )
 
-        ax.set_ylabel("Test accuracy rate")
-        ax.set_xlabel(f"Training set size")
-        ax.legend(frameon=True, loc="lower right")
-        ax.set_ylim(min_val,max_val+0.01)
-        ax.set_xlim(res["mean"].dropna().index.min(), res["mean"].index.max())
-        plt.tight_layout()
+    ax.set_ylabel("Test accuracy rate")
+    ax.set_xlabel(f"Training set size")
+    ax.legend(frameon=True, loc="lower right")
+    ax.set_ylim(min_val, max_val + 0.01)
+    ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+    ax.set_xlim(res["mean"].dropna().index.min(), res["mean"].index.max())
+    plt.tight_layout()
     return fig, ax
