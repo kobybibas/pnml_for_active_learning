@@ -1,12 +1,13 @@
 from data import (
     get_CIFAR10,
+    get_CIFAR10_OOD,
     get_EMNIST,
+    get_EMNIST_OOD,
     get_FashionMNIST,
     get_MNIST,
     get_MNIST_C,
     get_MNIST_OOD,
     get_SVHN,
-    get_CIFAR10_OOD,
 )
 from nets import CIFAR10_Net, EMNIST_Net, MNIST_Net, SVHN_Net
 from query_strategies import (
@@ -43,6 +44,8 @@ def get_dataset(
         return get_MNIST_OOD(data_dir, val_set_size, dataset_limit)
     elif name == "EMNIST":
         return get_EMNIST(data_dir, val_set_size, dataset_limit)
+    elif name == "EMNIST_OOD":
+        return get_EMNIST_OOD(data_dir, val_set_size, dataset_limit)
     elif name == "FashionMNIST":
         return get_FashionMNIST(data_dir, val_set_size, dataset_limit)
     elif name == "SVHN":
@@ -58,7 +61,7 @@ def get_dataset(
 def get_net(name):
     if name in ("MNIST", "MNIST_C", "MNIST_OOD", "FashionMNIST"):
         return MNIST_Net
-    elif name == "EMNIST":
+    elif name in ("EMNIST", "EMNIST_OOD"):
         return EMNIST_Net
     elif name == "SVHN":
         return SVHN_Net

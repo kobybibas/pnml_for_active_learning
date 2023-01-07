@@ -282,16 +282,65 @@ def get_MNIST_OOD(
 
 
 def get_EMNIST(
-    data_dir: str = "../data", val_set_size: int = 1024, dataset_limit: int = -1
+    data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
     raw_train = datasets.EMNIST(data_dir, split="balanced", train=True, download=True)
     raw_test = datasets.EMNIST(data_dir, split="balanced", train=False, download=True)
 
     train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
     train_data, train_targets, val_data, val_targets = execute_train_val_split(
-        train_data, train_targets, val_set_size
+        train_data, train_targets, validation_set_size
     )
     test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
+    return Data(
+        train_data,
+        train_targets,
+        val_data,
+        val_targets,
+        test_data,
+        test_targets,
+    )
+
+
+def get_EMNIST_OOD(
+    data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
+) -> Data:
+    raw_train = datasets.EMNIST(
+        data_dir,
+        split="balanced",
+        train=True,
+        download=True,
+        transform=mnist_transforms,
+    )
+
+    raw_ood = datasets.FashionMNIST(
+        data_dir,
+        train=False,
+        download=True,
+        transform=mnist_transforms,
+    )
+
+    train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
+    train_data, train_targets, val_data, val_targets = execute_train_val_split(
+        train_data, train_targets, validation_set_size
+    )
+    ood_data, _ = extract_dataset_to_tensors(raw_ood, dataset_limit)
+    train_data = torch.vstack((train_data, ood_data))
+    train_targets = torch.hstack(
+        (train_targets, -1 * torch.ones(ood_data.shape[0]))
+    ).long()
+
+    # Test set
+    raw_test = datasets.EMNIST(
+        data_dir,
+        split="balanced",
+        train=False,
+        download=True,
+        transform=mnist_transforms,
+    )
+
+    test_data, test_targets = extract_dataset_to_tensors(raw_test, dataset_limit)
+
     return Data(
         train_data,
         train_targets,

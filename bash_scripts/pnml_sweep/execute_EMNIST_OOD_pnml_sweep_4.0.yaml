@@ -1,0 +1,26 @@
+session_name: al_emnist_ood_pnml_sweep_4_0
+windows:
+        - window_name: execute_all
+          shell_command_before:
+                  - cd ../../src
+                  - conda activate pnml_for_active_learning
+                  - export WANDB_GROUP_ID=SWEEP_4.0
+          panes:
+                  - shell_command:
+                            - sleep 5
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=0 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
+                  - shell_command:
+                            - sleep 10
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=1 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
+                  - shell_command:
+                            - sleep 15
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=2 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
+                  - shell_command:
+                            - sleep 20
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=3 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
+                  - shell_command:
+                            - sleep 25
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=4 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
+                  - shell_command:
+                            - sleep 30
+                            - CUDA_VISIBLE_DEVICES=3 python main.py dataset_name=EMNIST_OOD strategy_name=DropoutPnml seed=5 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100 query_batch_size=64 unlabeled_pool_size=64 test_set_size=64 temperature=4.0
