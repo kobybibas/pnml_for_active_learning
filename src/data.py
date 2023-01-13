@@ -17,9 +17,11 @@ logger = logging.getLogger(__name__)
 mnist_transforms = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
 )
+
 fashion_mnist_transforms = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.2860,), (0.3530,))]
 )
+
 svhn_transforms = transforms.Compose(
     [
         transforms.ToTensor(),
@@ -284,8 +286,20 @@ def get_MNIST_OOD(
 def get_EMNIST(
     data_dir: str = "../data", validation_set_size: int = 1024, dataset_limit: int = -1
 ) -> Data:
-    raw_train = datasets.EMNIST(data_dir, split="balanced", train=True, download=True)
-    raw_test = datasets.EMNIST(data_dir, split="balanced", train=False, download=True)
+    raw_train = datasets.EMNIST(
+        data_dir,
+        split="balanced",
+        train=True,
+        download=True,
+        transform=mnist_transforms,
+    )
+    raw_test = datasets.EMNIST(
+        data_dir,
+        split="balanced",
+        train=False,
+        download=True,
+        transform=mnist_transforms,
+    )
 
     train_data, train_targets = extract_dataset_to_tensors(raw_train, dataset_limit)
     train_data, train_targets, val_data, val_targets = execute_train_val_split(

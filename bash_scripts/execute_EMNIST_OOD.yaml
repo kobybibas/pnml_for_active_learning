@@ -8,7 +8,7 @@ windows:
           panes:
                   - shell_command:
                             - sleep 0
-                            - CUDA_VISIBLE_DEVICES=0 python main.py dataset_name=EMNIST_OOD strategy_name=RandomSampling seed=0 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100
+                            - CUDA_VISIBLE_DEVICES=0 python main.py dataset_name=EMNIST_OOD strategy_name=RandomSampling seed=0 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100  query_batch_size=64 unlabeled_pool_size=64
                   - shell_command:
                             - sleep 5
                             - CUDA_VISIBLE_DEVICES=0 python main.py dataset_name=EMNIST_OOD strategy_name=RandomSampling seed=1 n_init_labeled=40 n_round=300 n_query=1 batch_size=64 n_drop=100
