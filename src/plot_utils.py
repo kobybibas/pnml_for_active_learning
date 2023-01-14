@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
+
 def process_results(run_list, api):
     dfs = []
     for run_name in run_list:
@@ -41,18 +42,17 @@ def execute_df_rollout(dfs, rolling_size):
     return results
 
 
-def execute_plot(random_res, bald_res, pnml_res, fig, ax):
+def execute_plot(plot_list, fig, ax):
+    colors = ["C0", "C2", "C3", "C1"]
     min_val, max_val = 100.0, 0.0
-    for i, (res, name) in enumerate(
-        ([(random_res, "Random"), (bald_res, "Bald"), (pnml_res, "pNML")])
-    ):
-        ax.plot(res["mean"], label=name, color=f"C{i}")
+    for i, (res, name) in enumerate(plot_list):
+        ax.plot(res["mean"], label=name, color=colors[i])
         ax.fill_between(
             res["low"].index,
             res["low"].values,
             res["high"].values,
-            facecolor=f"C{i}",
-            alpha=0.15,
+            facecolor=colors[i],
+            alpha=0.1,
         )
         min_val, max_val = min(min_val, res["mean"].min()), max(
             max_val, res["mean"].max()
@@ -66,3 +66,19 @@ def execute_plot(random_res, bald_res, pnml_res, fig, ax):
     ax.set_xlim(res["mean"].dropna().index.min(), res["mean"].index.max())
     plt.tight_layout()
     return fig, ax
+
+
+def find_max_train_save(left_df, right_df):
+    left_df = left_df["mean"].reset_index()
+    left_df["test_acc_round"] = left_df["test_acc"].round(3)
+
+    right_df = right_df["mean"].reset_index()
+    right_df["test_acc_round"] = right_df["test_acc"].round(3)
+
+    merge_df = pd.merge(
+        left_df, right_df, on="test_acc_round", suffixes=("_left", "_right")
+    ).dropna()
+    idx = (
+        merge_df["training_set_size_right"] - merge_df["training_set_size_left"]
+    ).argmax()
+    return merge_df.iloc[idx]

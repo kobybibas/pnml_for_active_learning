@@ -94,7 +94,7 @@ def get_strategy(
     elif name == "EntropySamplingDropout":
         return EntropySamplingDropout()
     elif name == "KMeansSampling":
-        return KMeansSampling()
+        return KMeansSampling(            unlabeled_pool_size=unlabeled_pool_size)
     elif name == "KCenterGreedy":
         return KCenterGreedy()
     elif name == "BALDDropout":
