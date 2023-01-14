@@ -6,3 +6,5 @@ outputs/*
 .vscode
 vscode/*
 *.pdf
+bash_scripts/adhoc
+bash_scripts/adhoc/*
