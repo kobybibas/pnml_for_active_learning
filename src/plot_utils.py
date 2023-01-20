@@ -5,30 +5,35 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
 
 
-def process_results(run_list, api):
+def process_results(run_list, api, use_ood=False):
     dfs = []
+
+    keys = ["training_set_size", "test_acc", "test_loss"]
+    if use_ood:
+        keys = ["training_set_size", "test_acc", "test_loss", "label_-1_ratio"]
     for run_name in run_list:
         print(run_name)
         run = api.run(run_name)
-        df = run.history(keys=["training_set_size", "test_acc", "test_loss"])
+        df = run.history(keys=keys)
+        # df.dropna().sort_values(by="training_set_size").set_index("training_set_size")
         df.dropna().sort_values(by="training_set_size").set_index("training_set_size")
         dfs.append(df)
 
     return dfs
 
 
-def execute_df_rollout(dfs, rolling_size):
+def execute_df_rollout(dfs, rolling_size, metric: str = "test_acc"):
     df = pd.concat(dfs)
 
     test_acc_mean = (
-        df.groupby("training_set_size")["test_acc"]
+        df.groupby("training_set_size")[metric]
         .mean()
         .sort_index()
         .rolling(rolling_size)
         .mean()
     )
     test_acc_std = (
-        df.groupby("training_set_size")["test_acc"]
+        df.groupby("training_set_size")[metric]
         .rolling(rolling_size)
         .std()
         .sort_index()
