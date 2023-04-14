@@ -26,6 +26,7 @@ from query_strategies import (
     MarginSampling,
     MarginSamplingDropout,
     RandomSampling,
+    Epig
 )
 from query_strategies.strategy import Strategy
 
@@ -124,6 +125,14 @@ def get_strategy(
         )
     elif name == "DropoutGenie":
         return DropoutGenie(
+            n_drop=n_drop,
+            query_batch_size=query_batch_size,
+            unlabeled_pool_size=unlabeled_pool_size,
+            test_set_size=test_set_size,
+            temperature=temperature,
+        )
+    elif name == 'Epig':
+        return Epig(
             n_drop=n_drop,
             query_batch_size=query_batch_size,
             unlabeled_pool_size=unlabeled_pool_size,
