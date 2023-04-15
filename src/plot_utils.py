@@ -48,9 +48,13 @@ def execute_df_rollout(dfs, rolling_size, metric: str = "test_acc"):
 
 
 def execute_plot(plot_list, fig, ax):
-    colors = ["C0", "C2", "C3", "C1"]
+    if len(plot_list) == 5:
+        colors = ["C0", "C2", "C3", "C4", "C1"]
+    else:
+        colors = ["C0", "C2", "C3", "C4", "C1"]
     min_val, max_val = 100.0, 0.0
     for i, (res, name) in enumerate(plot_list):
+        print(name)
         ax.plot(res["mean"], label=name, color=colors[i])
         ax.fill_between(
             res["low"].index,

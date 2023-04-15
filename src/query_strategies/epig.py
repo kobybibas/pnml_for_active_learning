@@ -425,7 +425,7 @@ class Epig(Strategy):
             shuffle=False,
         )
         test_loader = DataLoader(
-            test_subset, batch_size=self.batch_size, num_workers=0, shuffle=False
+            test_subset, batch_size=self.batch_size, num_workers=0, shuffle=True
         )
         return candidate_loader, val_loader, test_loader
 
@@ -440,7 +440,7 @@ class Epig(Strategy):
             logprobs = self.conditional_predict(
                 combined_inputs, self.n_samples_test, independent=False
             )
-            logprobs_list.append(logprobs.unsqueeze(1))
+            logprobs_list.append(logprobs.cpu().unsqueeze(1))
 
         logprobs = torch.cat(logprobs_list, dim=1)  # [N + N_t, K, Cl]
         epig_fn = epig_from_logprobs_using_matmul if use_matmul else epig_from_logprobs
@@ -474,6 +474,7 @@ class Epig(Strategy):
         torch.set_grad_enabled(False)
 
         self.net = net
+        self.net.train()  # To enable dropout
 
         candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
         target_inputs, _, _ = next(iter(test_loader))
@@ -483,6 +484,10 @@ class Epig(Strategy):
         )
 
         scores = scores["epig"]
-        min_x_score, min_x_idx = scores.sort(descending=False, axis=-1)
+        min_x_score, min_x_idx = scores.sort(
+            descending=True, axis=-1
+        )  # Choose with the maximial score
         choesn_idxs = idx_candidates[min_x_idx[:n]]
+
+        self.net.eval()
         return choesn_idxs
