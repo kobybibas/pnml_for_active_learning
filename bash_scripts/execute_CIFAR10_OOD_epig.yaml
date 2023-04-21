@@ -10,11 +10,9 @@ windows:
                             - sleep 0
                             - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=0 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
                             - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=1 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
-                  - shell_command:
-                            - sleep 5
                             - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=2 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
-                            - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=3 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
                   - shell_command:
                             - sleep 5
+                            - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=3 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
                             - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=4 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100
                             - python main.py dataset_name=CIFAR10_OOD strategy_name=Epig seed=5 n_init_labeled=1000 n_round=300 n_query=16 batch_size=64 precision=16 n_drop=100

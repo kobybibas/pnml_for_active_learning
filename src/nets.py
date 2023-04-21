@@ -77,7 +77,7 @@ class EMNIST_Net(nn.Module):
         x = self.drop1(x)
         x = self.max_pool1(x)
         x = self.relu1(x)
-
+        
         x = self.conv2(x)
         x = self.drop2(x)
         x = self.max_pool2(x)

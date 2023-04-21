@@ -271,6 +271,9 @@ def epig_from_logprobs(logprobs_pool: Tensor, logprobs_targ: Tensor) -> Tensor:
     Returns:
         Tensor[float], [N_p,]
     """
+    logger.info(
+        f"Epig: epig_from_logprobs {logprobs_pool.shape=} {logprobs_targ.shape=}"
+    )
     scores = conditional_epig_from_logprobs(logprobs_pool, logprobs_targ)  # [N_p, N_t]
     return epig_from_conditional_scores(scores)  # [N_p,]
 
@@ -299,6 +302,9 @@ def epig_from_logprobs_using_matmul(
     Returns:
         Tensor[float], [N_p,]
     """
+    logger.info(
+        f"Epig: epig_from_logprobs_using_matmul {logprobs_pool.shape=} {logprobs_targ.shape=}"
+    )
     probs_pool = torch.exp(logprobs_pool)  # [N_p, K, Cl]
     probs_targ = torch.exp(logprobs_targ)  # [N_t, K, Cl]
     return epig_from_probs_using_matmul(probs_pool, probs_targ)  # [N_p,]
@@ -418,16 +424,10 @@ class Epig(Strategy):
             num_workers=0,
             shuffle=False,
         )
-        val_loader = DataLoader(
-            dataset.get_val_data(),
-            batch_size=self.batch_size,
-            num_workers=0,
-            shuffle=False,
-        )
         test_loader = DataLoader(
             test_subset, batch_size=self.batch_size, num_workers=0, shuffle=True
         )
-        return candidate_loader, val_loader, test_loader
+        return candidate_loader, test_loader
 
     def estimate_epig_minibatch(
         self, inputs: Tensor, target_inputs: Tensor, use_matmul: bool
@@ -476,7 +476,7 @@ class Epig(Strategy):
         self.net = net
         self.net.train()  # To enable dropout
 
-        candidate_loader, val_loader, test_loader = self.build_dataloaders(dataset)
+        candidate_loader, test_loader = self.build_dataloaders(dataset)
         target_inputs, _, _ = next(iter(test_loader))
 
         scores, idx_candidates = self.estimate_epig(

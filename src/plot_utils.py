@@ -16,6 +16,7 @@ def process_results(run_list, api, use_ood=False):
         run = api.run(run_name)
         df = run.history(keys=keys)
         # df.dropna().sort_values(by="training_set_size").set_index("training_set_size")
+        print(df.keys())
         df.dropna().sort_values(by="training_set_size").set_index("training_set_size")
         dfs.append(df)
 
