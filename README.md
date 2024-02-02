@@ -1,85 +1,47 @@
-# DeepAL: Deep Active Learning in Python
+# Deep Individual Active Learning: Safeguarding against Out-of-Distribution Challenges in Neural Networks
 
-Python implementations of the following active learning algorithms:
+Abstract
+> Active learning (AL) is a paradigm focused on purposefully selecting training data to enhance a model’s performance by minimizing the need for annotated samples. Typically, strategies assume that the training pool shares the same distribution as the test set, which is not always valid in privacy-sensitive applications where annotating user data is challenging. In this study, we operate within an individual setting and leverage an active learning criterion which selects data points for labeling based on minimizing the min-max regret on a small unlabeled test set sample. Our key contribution lies in the development of an efficient algorithm, addressing the challenging computational complexity associated with approximating this criterion for neural networks. Notably, our results show that, especially in the presence of out-of-distribution data, the proposed algorithm substantially reduces the required training set size by up to 15.4%, 11%, and 35.1% for CIFAR10, EMNIST, and MNIST datasets, respectively.
 
-- Random Sampling
-- Least Confidence [1]
-- Margin Sampling [2]
-- Entropy Sampling [3]
-- Uncertainty Sampling with Dropout Estimation [4]
-- Bayesian Active Learning Disagreement [4]
-- Core-Set Selection [5]
-- Adversarial margin [6]
 
-## Prerequisites 
+[paper link](https://www.mdpi.com/1099-4300/26/2/129)
 
-- numpy            1.21.2
-- scipy            1.7.1
-- pytorch          1.10.0
-- torchvision      0.11.1
-- scikit-learn     1.0.1
-- tqdm             4.62.3
-- ipdb             0.13.9
 
-You can also use the following command to install conda environment
+# Setup
 
 ```
-conda env create -f environment.yml
+conda create -n pnml_for_active_learning
+conda activate pnml_for_active_learning
+pip install -r requirements.txt
+pip install tmuxp
 ```
 
-## Demo 
-
+# Execute
+All executable experiment scrips are located in bash_scripts.
+An example of executing one of them:
 ```
-  python demo.py \
-      --n_round 10 \
-      --n_query 1000 \
-      --n_init_labeled 10000 \
-      --dataset_name MNIST \
-      --strategy_name RandomSampling \
-      --seed 1
+tmuxp load ./mysession.yaml
+bash_scripts/execute_CIFAR10.yaml
 ```
 
-Please refer [here](https://arxiv.org/abs/2111.15258) for more details.
 
-## Citing
-
-If you use our code in your research or applications, please consider citing our paper.
+# Cite
 
 ```
-@article{Huang2021deepal,
-    author    = {Kuan-Hao Huang},
-    title     = {DeepAL: Deep Active Learning in Python},
-    journal   = {arXiv preprint arXiv:2111.15258},
-    year      = {2021},
+@Article{e26020129,
+AUTHOR = {Shayovitz, Shachar and Bibas, Koby and Feder, Meir},
+TITLE = {Deep Individual Active Learning: Safeguarding against Out-of-Distribution Challenges in Neural Networks},
+JOURNAL = {Entropy},
+VOLUME = {26},
+YEAR = {2024},
+NUMBER = {2},
+ARTICLE-NUMBER = {129},
+URL = {https://www.mdpi.com/1099-4300/26/2/129},
+ISSN = {1099-4300},
+DOI = {10.3390/e26020129}
 }
 ```
 
-## Reference
-
-[1] A Sequential Algorithm for Training Text Classifiers, SIGIR, 1994
-
-[2] Active Hidden Markov Models for Information Extraction, IDA, 2001
-
-[3] Active learning literature survey. University of Wisconsin-Madison Department of Computer Sciences, 2009
-
-[4] Deep Bayesian Active Learning with Image Data, ICML, 2017
-
-[5] Active Learning for Convolutional Neural Networks: A Core-Set Approach, ICLR, 2018
-
-[6] Adversarial Active Learning for Deep Networks: a Margin Based Approach, arXiv, 2018
-
-
-
-
-
-# New
-cinic data follows: https://github.com/AntonFriberg/pytorch-cinic-10
-```
-mkdir -p data/cinic-10
-curl -L \
-  https://datashare.is.ed.ac.uk/bitstream/handle/10283/3192/CINIC-10.tar.gz \
-  | tar xz -C data/cinic-10
-```
 
 
 
